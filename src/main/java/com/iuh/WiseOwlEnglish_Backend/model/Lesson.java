@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -53,8 +54,8 @@ public class Lesson {
     @JsonIgnore
     private Set<Sentence> sentences;
 
-    @OneToOne(mappedBy = "lessonTest", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "lessonTest", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.LAZY)
     @JsonIgnore
-    private Test tests;
+    private List<Test> tests;
 
 }

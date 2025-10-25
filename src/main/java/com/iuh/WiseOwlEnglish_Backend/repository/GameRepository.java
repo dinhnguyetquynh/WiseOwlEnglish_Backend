@@ -20,5 +20,7 @@ public interface GameRepository extends JpaRepository<Game, Long> {
             @Param("type") GameType type,
             @Param("lessonId") Long lessonId
     );
+    // Phương thức kiểm tra sự tồn tại
+    boolean existsByTypeAndLessonId(GameType type, Long lessonId);
 
 }

@@ -85,7 +85,7 @@ public class LearnerProfileService {
         // 1) Tìm UserAccount hiện tại (nếu gắn profile theo user)
         String userIdStr = String.valueOf(userId);
         UserAccount owner = userAccountRepo.findById(userId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.NOT_FOUND, HttpStatus.NOT_FOUND, userIdStr+" user nay không tồn tại"));
+                .orElseThrow(() -> new NotFoundException(userIdStr+" user nay không tồn tại"));
 
         // 2) Lưu LearnerProfile
         var now = LocalDateTime.now();
@@ -137,7 +137,7 @@ public class LearnerProfileService {
         return grades.stream()
                 .filter(g -> Objects.equals(g.getId(), id))
                 .findFirst()
-                .orElseThrow(() -> new NotFoundException(ErrorCode.NOT_FOUND, HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new NotFoundException(
                         "GradeLevel id="+id+" không tồn tại hoặc không hợp lệ"));
     }
 

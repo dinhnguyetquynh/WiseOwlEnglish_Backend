@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.model;
 
+import com.iuh.WiseOwlEnglish_Backend.enums.TestType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,7 +24,7 @@ public class Test {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
             name = "lesson_id",
             nullable = false,
@@ -32,6 +33,11 @@ public class Test {
     private Lesson lessonTest;
 
     private String title;
+
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "test_type", length = 32, nullable = false)
+    private TestType testType;
 
     @Column(columnDefinition = "text")
     private String description;

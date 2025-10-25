@@ -30,10 +30,10 @@ public class GameOption {
 
     // ---- Nội dung option (đa hình) ----
     @Enumerated(EnumType.STRING)
-    @Column(name = "content_type", nullable = false, length = 16)
+    @Column(name = "content_type", nullable = true, length = 16)
     private ContentType contentType;      // VOCAB/SENTENCE/IMAGE/AUDIO
 
-    @Column(name = "content_ref_id", nullable = false)
+    @Column(name = "content_ref_id", nullable = true)
     private Long contentRefId;            // id của vocab/sentence/media
 
     @Column(name = "is_correct", nullable = false)
@@ -48,6 +48,9 @@ public class GameOption {
     private String pairKey;               // mã ghép cặp
 
     private Integer position;             // thứ tự hiển thị
+
+    @Column(name = "answer_text")
+    private String answerText;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

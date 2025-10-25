@@ -1,16 +1,12 @@
 package com.iuh.WiseOwlEnglish_Backend.controller;
 
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.PictureGuessingGameRes;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.PictureSentenceQuesRes;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.SoundWordOptionRes;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.SoundWordQuestionRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.request.GameReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
 import com.iuh.WiseOwlEnglish_Backend.service.GameService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -37,4 +33,13 @@ public class GameController {
         List<PictureSentenceQuesRes> games = gameService.getListGamePictureSentence(lessonId);
         return ResponseEntity.ok(games);
     }
+
+    //api for admin
+    @PostMapping("/create-game")
+    public ResponseEntity<GameRes> createGame(@Validated @RequestBody GameReq req){
+        GameRes res = gameService.createGame(req);
+        return ResponseEntity.ok(res);
+    }
+
+
 }

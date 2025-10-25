@@ -62,4 +62,8 @@ public class TestQuestion {
 
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TestOption> options;
+
+    // Thêm mối quan hệ 1:1 với MediaAsset
+    @OneToOne(mappedBy = "testQuestion", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private MediaAsset mediaAsset;
 }

@@ -8,6 +8,7 @@ public enum ErrorCode {
     FORBIDDEN,             // 403
     BAD_REQUEST,           // 400
     INTERNAL_ERROR,         // 500
-    GRADE_DATA_INVALID
+    GRADE_DATA_INVALID,
+    CONFLICT //409
 
 }

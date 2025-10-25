@@ -41,10 +41,10 @@ public class GameQuestion {
 
     // ---- Prompt (chỉ 1 prompt/câu) ----
     @Enumerated(EnumType.STRING)
-    @Column(name = "prompt_type", nullable = false, length = 16)
+    @Column(name = "prompt_type", nullable = true, length = 16)
     private PromptType promptType;          // VOCAB/SENTENCE/IMAGE/AUDIO
 
-    @Column(name = "prompt_ref_id", nullable = false)
+    @Column(name = "prompt_ref_id", nullable = true)
     private Long promptRefId;               // id của vocab/sentence/media
 
     // Cho FILL_IN_BLANK (tùy game type)
@@ -57,6 +57,10 @@ public class GameQuestion {
 
     @Column(name = "reward_core", nullable = false)
     private int rewardCore;
+
+
+    @Column(name = "question_text")
+    private String questionText;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

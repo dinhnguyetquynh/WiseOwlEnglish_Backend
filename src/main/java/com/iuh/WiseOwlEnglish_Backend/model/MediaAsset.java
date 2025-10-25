@@ -61,5 +61,9 @@ public class MediaAsset {
     @JsonIgnore
     private Sentence sentence;
 
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "test_question_id", foreignKey = @ForeignKey(name = "fk_media_asset_test_question"),unique = true)
+    @JsonIgnore
+    private TestQuestion testQuestion;
 
 }

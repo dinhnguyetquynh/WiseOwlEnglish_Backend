@@ -51,7 +51,7 @@ public class TestOption {
 
     // Dành cho matching
     @Enumerated(EnumType.STRING)
-    @Column(length = 8)
+    @Column(length = 8, nullable = true)
     private Side side;                   // LEFT/RIGHT
 
     @Column(name = "pair_key")
