@@ -111,6 +111,7 @@ public class GameService {
     };
 
     public List<PictureSentenceQuesRes> getListGamePictureSentence(long lessonId){
+        System.out.println("READY GET GAME");
         Optional<Long> gameId = gameRepository.findGameIdByTypeAndLessonId(PICTURE_SENTENCE_MATCHING,lessonId);
         if(gameId.isPresent()){
             List<GameQuestion> gameQuestions = gameQuestionRepository.findByGameId(gameId.get());
@@ -119,10 +120,11 @@ public class GameService {
                 res.setId(gameQuestion.getId());
                 res.setGameId(gameId.get());
                 res.setPosition(gameQuestion.getPosition());
-                Sentence sentence = sentenceRepository.findById(gameQuestion.getPromptRefId()).orElse(null);
-                res.setSentenceQues(sentence != null ? sentence.getSentence_en(): null);
-                String imgUrl = mediaAssetRepository.findImageUrlBySentenceId(sentence.getId(), MediaType.IMAGE).orElse(null);
-                res.setImageUrl(imgUrl);
+
+                res.setSentenceQues(gameQuestion.getQuestionText());
+                MediaAsset mediaAsset = mediaAssetRepository.findById(gameQuestion.getPromptRefId())
+                        .orElseThrow(()-> new NotFoundException("Not found img for question"));
+                res.setImageUrl(mediaAsset.getUrl());
                 res.setRewardPoint(gameQuestion.getRewardCore());
 
 
@@ -132,10 +134,7 @@ public class GameService {
 
                     optionRes.setId(option.getId());
                     optionRes.setQuestionId(gameQuestion.getId());
-                    if(option.getContentType().toString().equals(("SENTENCE"))){
-                        Sentence optionSentence = sentenceRepository.findById(option.getContentRefId()).orElse(null);
-                        optionRes.setSentenceAnswer(optionSentence != null ? optionSentence.getSentence_en() : null);
-                    }
+                    optionRes.setSentenceAnswer(option.getAnswerText());
                     optionRes.setCorrect(option.isCorrect());
                     optionRes.setPosition(option.getPosition());
                     return optionRes;
@@ -147,403 +146,169 @@ public class GameService {
         return List.of();
     };
 
-    //FUNCTION FOR ADMIN
-    // add new game
-    public GameRes createGame(GameReq req){
-        if (req.getType() == null) {
-            throw new IllegalArgumentException("Loại game không được để trống");
-        }
+    public List<PictureWordRes> getListGamePictureWordWriting(long lessonId){
+        System.out.println("READY GET GAME WORD WRITING");
+        Long gameId = gameRepository.findGameIdByTypeAndLessonId(PICTURE_WORD_WRITING,lessonId)
+                .orElseThrow(()->new NotFoundException("Bai hoc nay chua co game nhin hin viet tu vung"));
+        if(gameId!=null){
+            List<GameQuestion> questionList = gameQuestionRepository.findByGameId(gameId);
 
-        switch (GameType.valueOf(req.getType())) {
-            case PICTURE_WORD_MATCHING:
-                return createPictureWordMatching(req);
-            case SOUND_WORD_MATCHING:
-                return createSoundWordMatching(req);
-            case PICTURE_SENTENCE_MATCHING:
-                return createPictureSentenceMatching(req);
-            case PICTURE_WORD_WRITING:
-                return createPictureWordWriting(req);
-            case PICTURE4_WORD4_MATCHING:
-                return createPicture4Word4Matching(req);
-            case SENTENCE_HIDDEN_WORD:
-                return createSentenceHiddenWord(req);
-            case WORD_TO_SENTENCE:
-                return createWordToSentence(req);
-            default:
-                throw new IllegalArgumentException("Loại game không được hỗ trợ: " + req.getType());
-        }
+            List<PictureWordRes> resList = new ArrayList<>();
 
-    }
+            for(GameQuestion question: questionList){
+                PictureWordRes questionRes = new PictureWordRes();
+                questionRes.setId(question.getId());
+                questionRes.setGameId(gameId);
+                questionRes.setPosition(question.getPosition());
+                MediaAsset mediaAsset = mediaAssetRepository.findById(question.getPromptRefId())
+                        .orElseThrow(()-> new NotFoundException("Khong tim thay hinh anh cho cau hoi")); //img cua vocab
+                questionRes.setImgURL(mediaAsset.getUrl());
+                questionRes.setRewardCore(question.getRewardCore());
 
-    public Game createNewGame(GameReq req){
-        try {
-            boolean gameExists = gameRepository.existsByTypeAndLessonId(GameType.valueOf(req.getType()), req.getLessonId());
-            if (gameExists) {
-                throw new ResourceAlreadyExistsException("Loại game :"+req.getType()+"đã tồn tại trong lesson " +req.getLessonId());
-            }
-            Game newGame = new Game();
-            newGame.setTitle(req.getTitle());
-            newGame.setType(GameType.valueOf(req.getType()));
-            newGame.setDifficulty(req.getDifficulty());
-            // java
-            Lesson lesson = lessonRepository.findById(req.getLessonId())
-                    .orElseThrow(() -> new NotFoundException("Lesson not found: " + req.getLessonId()));
-            newGame.setLesson(lesson);
-            MediaAsset correctAudio = mediaAssetRepository.findById(req.getCorrectAudioId())
-                    .orElseThrow(() -> new NotFoundException("Correct sound not found: " + req.getCorrectAudioId()));
-            newGame.setCorrectAudio(correctAudio);
-
-            MediaAsset wrongAudio = mediaAssetRepository.findById(req.getWrongAudioId())
-                    .orElseThrow(() -> new NotFoundException("Wrong sound not found: " + req.getWrongAudioId()));
-            newGame.setWrongAudio(wrongAudio);
-            newGame.setCreatedAt(LocalDateTime.now());
-            newGame.setUpdatedAt(LocalDateTime.now());
-            Game savedGame = gameRepository.save(newGame);
-            return savedGame;
-
-        }catch (ResourceAlreadyExistsException e){
-            throw e;
-
-        } catch (Exception exception){
-            System.err.println("Lỗi nghiêm trọng khi tạo game: " + exception.getMessage());
-            exception.printStackTrace(); // Rất quan trọng để log stack trace
-            throw new GameCreationException("Tạo game thất bại. Vui lòng thử lại sau.");
-        }
-
-    }
-
-    //Game dành cho lớp 1 : nhìn hình chọn chữ.
-    public GameRes createPictureWordMatching(GameReq req){
-        try {
-            Game savedGame = createNewGame(req);
-
-            //create ListQuestion
-            for(var question:req.getQuestions()){
-                GameQuestion gameQuestion = new GameQuestion();
-                gameQuestion.setGame(savedGame);
-                gameQuestion.setPosition(question.getPosition());
-                gameQuestion.setPromptType(PromptType.valueOf(question.getPromptType()));
-                gameQuestion.setPromptRefId(question.getPromptRefId());
-                gameQuestion.setRewardCore(question.getRewardCore());
-                gameQuestion.setCreatedAt(LocalDateTime.now());
-                gameQuestion.setUpdatedAt(LocalDateTime.now());
-
-                List<GameOption> listOptions = new ArrayList<>();
-                for(var option : question.getOptionReqs()){
-                    GameOption opt = new GameOption();
-                    opt.setGameQuestion(gameQuestion);
-                    opt.setContentType(ContentType.valueOf(option.getContentType()));
-                    opt.setContentRefId(option.getContentRefId());
-                    opt.setCorrect(option.isCorrect());
-                    opt.setPosition(option.getPosition());
-                    opt.setCreatedAt(LocalDateTime.now());
-                    opt.setUpdatedAt(LocalDateTime.now());
-                    listOptions.add(opt);
-
+                List<GameOption> options = gameOptionRepository.findByGameQuestionId(question.getId());
+                List<PictureWordOptRes> optResList = new ArrayList<>();
+                for(GameOption option: options){
+                    PictureWordOptRes optRes = new PictureWordOptRes();
+                    optRes.setId(option.getId());
+                    optRes.setQuestionId(option.getGameQuestion().getId());
+                    optRes.setAnswerText(option.getAnswerText());
+                    optRes.setPosition(option.getPosition());
+                    optRes.setCorrect(option.isCorrect());
+                    optResList.add(optRes);
                 }
-                gameQuestion.setOptions(listOptions);
-                GameQuestion savedQuestion = gameQuestionRepository.save(gameQuestion);
+                questionRes.setOptsRes(optResList);
+                resList.add(questionRes);
             }
-
-            GameRes res = gameMapper.toDTO(savedGame);
-            return res;
-        }catch (GameCreationException exception) {
-            throw new GameCreationException("Tạo câu hỏi và đáp án cho game thất bại. Vui lòng thử lại sau.");
-
+            return resList;
         }
+        return List.of();
     }
 
-    //Game dành cho lớp 1: nghe âm thanh chọn hình
-    public GameRes createSoundWordMatching(GameReq req){
-        try {
-            //CHECK
+    public List<PictureMatchWordRes> getGamesPictureMatchWord(long lessonId){
+        System.out.println("READY GET GAME WORD WRITING");
+        Long gameId = gameRepository.findGameIdByTypeAndLessonId(PICTURE4_WORD4_MATCHING,lessonId)
+                .orElseThrow(()->new NotFoundException("Bai hoc nay chua co game NOI HINH VA TU VUNG"));
+        if(gameId!=null){
+            List<GameQuestion> questionList = gameQuestionRepository.findByGameId(gameId);
 
-            Game savedGame = createNewGame(req);
+            List<PictureMatchWordRes> resList = new ArrayList<>();
 
-            for(GameQuestionReq questionReq : req.getQuestions()){
-                GameQuestion question = new GameQuestion();
-                question.setGame(savedGame);
-                question.setPosition(questionReq.getPosition());
-                question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
-                question.setPromptRefId(questionReq.getPromptRefId());
-                question.setRewardCore(questionReq.getRewardCore());
-                question.setCreatedAt(LocalDateTime.now());
-                question.setUpdatedAt(LocalDateTime.now());
+            for(GameQuestion question: questionList){
+                PictureMatchWordRes questionRes = new PictureMatchWordRes();
+                questionRes.setId(question.getId());
+                questionRes.setGameId(gameId);
+                questionRes.setPosition(question.getPosition());
+                questionRes.setRewardCore(question.getRewardCore());
 
-                //create and set list options for question
-                List<GameOption> gameOptionList = new ArrayList<>();
-                for(GameOptionReq optionReq:questionReq.getOptionReqs()){
-                    GameOption option = new GameOption();
-                    option.setGameQuestion(question);
-                    option.setContentType(ContentType.valueOf(optionReq.getContentType()));
-                    option.setContentRefId(optionReq.getContentRefId());
-                    option.setCorrect(optionReq.isCorrect());
-                    option.setPosition(optionReq.getPosition());
-                    option.setCreatedAt(LocalDateTime.now());
-                    option.setUpdatedAt(LocalDateTime.now());
+                List<GameOption> options = gameOptionRepository.findByGameQuestionId(question.getId());
+                List<PictureMatchWordOptRes> optResList = new ArrayList<>();
+                for(GameOption option: options){
+                    PictureMatchWordOptRes optRes = new PictureMatchWordOptRes();
+                    optRes.setId(option.getId());
+                    optRes.setQuestionId(option.getGameQuestion().getId());
 
-                    gameOptionList.add((option));
-                }
-                question.setOptions(gameOptionList);
-                GameQuestion savedQuestion = gameQuestionRepository.save(question);
-            }
-            return gameMapper.toDTO(savedGame);
-
-        }catch (GameCreationException exception){
-            throw new GameCreationException("Tạo câu hỏi và đáp án cho game thất bại. Vui lòng thử lại sau.");
-
-        }
-
-    }
-
-    //Game dành cho lớp 1: nhìn hình chọn câu
-    public GameRes createPictureSentenceMatching(GameReq req){
-        try {
-            Game savedGame = createNewGame(req);
-
-            for(GameQuestionReq questionReq : req.getQuestions()){
-                GameQuestion question = new GameQuestion();
-                question.setGame(savedGame);
-                question.setPosition(questionReq.getPosition());
-                question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
-                question.setPromptRefId(questionReq.getPromptRefId());
-                question.setQuestionText(questionReq.getQuestionText());
-                question.setRewardCore(questionReq.getRewardCore());
-                question.setCreatedAt(LocalDateTime.now());
-                question.setUpdatedAt(LocalDateTime.now());
-
-                //create and set list options for question
-                List<GameOption> gameOptionList = new ArrayList<>();
-                for(GameOptionReq optionReq:questionReq.getOptionReqs()){
-                    GameOption option = new GameOption();
-                    option.setGameQuestion(question);
-                    option.setAnswerText(optionReq.getAnswerText());
-                    option.setCorrect(optionReq.isCorrect());
-                    option.setPosition(optionReq.getPosition());
-                    option.setCreatedAt(LocalDateTime.now());
-                    option.setUpdatedAt(LocalDateTime.now());
-                    gameOptionList.add((option));
-                }
-                question.setOptions(gameOptionList);
-                GameQuestion savedQuestion = gameQuestionRepository.save(question);
-            }
-            return gameMapper.toDTO(savedGame);
-
-
-        }catch (GameCreationException exception){
-            throw new GameCreationException("Tạo câu hỏi và đáp án cho game nhìn hình chọn câu thất bại. Vui lòng thử lại sau.");
-        }
-    }
-
-    //game dành cho lớp 3: nhìn hình vieet từ vựng
-    public GameRes createPictureWordWriting(GameReq req){
-        try {
-            Game savedGame = createNewGame(req);
-
-            for(GameQuestionReq questionReq : req.getQuestions()){
-                GameQuestion question = new GameQuestion();
-                question.setGame(savedGame);
-                question.setPosition(questionReq.getPosition());
-                question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
-                question.setPromptRefId(questionReq.getPromptRefId());
-                question.setQuestionText(questionReq.getQuestionText());
-                question.setRewardCore(questionReq.getRewardCore());
-                question.setCreatedAt(LocalDateTime.now());
-                question.setUpdatedAt(LocalDateTime.now());
-
-                //create and set list options for question
-                List<GameOption> gameOptionList = new ArrayList<>();
-                for(GameOptionReq optionReq:questionReq.getOptionReqs()){
-                    GameOption option = new GameOption();
-                    option.setGameQuestion(question);
-                    option.setAnswerText(optionReq.getAnswerText());
-                    option.setCorrect(optionReq.isCorrect());
-                    option.setPosition(optionReq.getPosition());
-                    option.setCreatedAt(LocalDateTime.now());
-                    option.setUpdatedAt(LocalDateTime.now());
-                    gameOptionList.add((option));
-                }
-                question.setOptions(gameOptionList);
-                GameQuestion savedQuestion = gameQuestionRepository.save(question);
-            }
-            return gameMapper.toDTO(savedGame);
-        }catch (GameCreationException exception){
-            throw new GameCreationException("Tạo câu hỏi và đáp án cho game nhìn hình  và viết từ vựng thất bại. Vui lòng thử lại sau.");
-        }
-    }
-
-    //Game dành cho lớp 3: nối hình và chữ
-    public GameRes createPicture4Word4Matching(GameReq req){
-        try {
-            Game savedGame = createNewGame(req);
-
-            for(GameQuestionReq questionReq : req.getQuestions()){
-                GameQuestion question = new GameQuestion();
-                question.setGame(savedGame);
-                question.setPosition(questionReq.getPosition());
-                question.setRewardCore(questionReq.getRewardCore());
-                question.setCreatedAt(LocalDateTime.now());
-                question.setUpdatedAt(LocalDateTime.now());
-
-                //game have 6 options
-                List<GameOption> gameOptionList = new ArrayList<>();
-                for(GameOptionReq optionReq:questionReq.getOptionReqs()){
-                    GameOption option = new GameOption();
-                    option.setGameQuestion(question);
-                    if(optionReq.getContentType()==null){
-                        option.setContentType(null);
-                    }else{
-                        option.setContentType(ContentType.valueOf(optionReq.getContentType()));
+                    if(option.getContentRefId()!=null){
+                        MediaAsset mediaAsset = mediaAssetRepository.findById(option.getContentRefId())
+                                .orElseThrow(()-> new NotFoundException("Khong tim thay hinh anh co id: "+option.getContentRefId()));
+                        optRes.setImgUrl(mediaAsset.getUrl());
                     }
-
-                    if (optionReq.getContentRefId()==null){
-                        option.setContentRefId(null);
-                    }else {
-                        option.setContentRefId(optionReq.getContentRefId());
-                    }
-                    if(optionReq.getAnswerText()==null){
-                        option.setAnswerText(null);
-                    }else {
-                        option.setAnswerText(optionReq.getAnswerText());
-                    }
-                    option.setSide(Side.valueOf(optionReq.getSide()));
-                    option.setPairKey(optionReq.getPairKey());
-                    option.setCorrect(optionReq.isCorrect());
-                    option.setPosition(optionReq.getPosition());
-                    option.setCreatedAt(LocalDateTime.now());
-                    option.setUpdatedAt(LocalDateTime.now());
-                    gameOptionList.add((option));
+                    optRes.setSide(option.getSide().toString());
+                    optRes.setPairKey(option.getPairKey());
+                    optRes.setAnswerText(option.getAnswerText());
+                    optRes.setPosition(option.getPosition());
+                    optRes.setCorrect(option.isCorrect());
+                    optResList.add(optRes);
                 }
-                question.setOptions(gameOptionList);
-                GameQuestion savedQuestion = gameQuestionRepository.save(question);
+                questionRes.setOptRes(optResList);
+                resList.add(questionRes);
             }
-            return gameMapper.toDTO(savedGame);
-        }catch (GameCreationException exception){
-            throw new GameCreationException("Tạo câu hỏi và đáp án cho game Nối hình ảnh với từ vựng thất bại. Vui lòng thử lại sau.");
+            return resList;
         }
+        return List.of();
+
     }
 
-    //Game dành cho lớp 3: điền từ còn thiếu trong câu
-    public GameRes createSentenceHiddenWord(GameReq req){
-        try {
-            Game savedGame = createNewGame(req);
+    public List<SentenceHiddenRes> getGamesSentenceHidden(long lessonId){
+        System.out.println("READY GET GAME SENTENCE HIDDEN WORD");
+        Long gameId = gameRepository.findGameIdByTypeAndLessonId(SENTENCE_HIDDEN_WORD,lessonId)
+                .orElseThrow(()->new NotFoundException("Bai hoc nay chua co game DIEN TU CON THIEU TRONG CAU"));
+        if(gameId!=null){
+            List<GameQuestion> questionList = gameQuestionRepository.findByGameId(gameId);
 
-            // 3.3) Tạo câu đã che từ: replace lần đầu bằng "___"
+            List<SentenceHiddenRes> resList = new ArrayList<>();
 
-            for(GameQuestionReq questionReq : req.getQuestions()){
-                GameQuestion question = new GameQuestion();
-                question.setGame(savedGame);
-                question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
-                question.setPromptRefId(questionReq.getPromptRefId());
-
-                String full = questionReq.getQuestionText();
-                String hidden = questionReq.getHiddenWord();
-                if (!containsLoose(full, hidden)) {
-                    throw new GameCreationException("hiddenWord không khớp với câu: " + hidden);
+            for(GameQuestion question: questionList){
+                SentenceHiddenRes questionRes = new SentenceHiddenRes();
+                questionRes.setId(question.getId());
+                questionRes.setGameId(gameId);
+                questionRes.setPosition(question.getPosition());
+                if(question.getPromptRefId()!=null){
+                    MediaAsset mediaAsset = mediaAssetRepository.findById(question.getPromptRefId())
+                            .orElseThrow(()->new NotFoundException("Khong tim duoc hinh anh co id:"+question.getPromptRefId()));
+                    questionRes.setImgURL(mediaAsset.getUrl());
                 }
-                String masked = maskFirstOccurrence(full, hidden, "___");
-                question.setQuestionText(masked);
-                question.setHiddenWord(questionReq.getHiddenWord());
-                question.setPosition(questionReq.getPosition());
-                question.setRewardCore(questionReq.getRewardCore());
-                question.setCreatedAt(LocalDateTime.now());
-                question.setUpdatedAt(LocalDateTime.now());
+                questionRes.setQuestionText(question.getQuestionText());
+                questionRes.setHiddenWord(question.getHiddenWord());
+                questionRes.setRewardCore(question.getRewardCore());
 
-                //game have 1 option
-                    GameOption option = new GameOption();
-                    option.setGameQuestion(question);
-                    option.setAnswerText(questionReq.getHiddenWord());
-                    option.setCorrect(true);
-                    option.setPosition(1);
-                    option.setCreatedAt(LocalDateTime.now());
-                    option.setUpdatedAt(LocalDateTime.now());
-
-
-                question.setOptions(List.of(option));
-                GameQuestion savedQuestion = gameQuestionRepository.save(question);
-            }
-            return gameMapper.toDTO(savedGame);
-        }catch (GameCreationException exception){
-            throw new GameCreationException("Tạo câu hỏi và đáp án cho game điền từ còn thiếu trong câu thất bại. Vui lòng thử lại sau.");
-        }
-    }
-
-    //Game dành cho lớp 3: sắp xếp từ thành câu
-    public GameRes createWordToSentence(GameReq req){
-        //admin tạo câu , backend split câu thành các tokens và lưu mỗi token thành 1 option
-        try {
-            Game savedGame = createNewGame(req);
-
-            for (GameQuestionReq questionReq : req.getQuestions()) {
-                GameQuestion question = new GameQuestion();
-                question.setGame(savedGame);
-                question.setQuestionText(questionReq.getQuestionText());
-                question.setPosition(questionReq.getPosition());
-                question.setRewardCore(questionReq.getRewardCore());
-                question.setCreatedAt(LocalDateTime.now());
-                question.setUpdatedAt(LocalDateTime.now());
-
-                List<String> tokens = tokenizeKeepPunct(questionReq.getQuestionText());
-                System.out.println("LIST TOKEN LA :" + tokens.toString());
-
-                int pos=1;
-                List<GameOption> gameOptionList = new ArrayList<>();
-                for (String tk : tokens) {
-                    GameOption opt = new GameOption();
-                    opt.setGameQuestion(question);
-                    opt.setAnswerText(tk);   // hiển thị lên FE
-                    opt.setPosition(pos++);  // 1,2,3,...
-                    opt.setCreatedAt(LocalDateTime.now());
-                    opt.setUpdatedAt(LocalDateTime.now());
-                    gameOptionList.add(opt);
+                List<GameOption> options = gameOptionRepository.findByGameQuestionId(question.getId());
+                List<SentenceHiddenOptRes> optResList = new ArrayList<>();
+                for(GameOption option: options){
+                    SentenceHiddenOptRes optRes = new SentenceHiddenOptRes();
+                    optRes.setId(option.getId());
+                    optRes.setQuestionId(option.getGameQuestion().getId());
+                    optRes.setAnswerText(option.getAnswerText());
+                    optRes.setPosition(option.getPosition());
+                    optRes.setCorrect(option.isCorrect());
+                    optResList.add(optRes);
                 }
-                question.setOptions(gameOptionList);
-                GameQuestion savedQuestion = gameQuestionRepository.save(question);
+                questionRes.setOptRes(optResList);
+                resList.add(questionRes);
             }
-            return gameMapper.toDTO(savedGame);
-        }catch (GameCreationException exception){
-            throw new GameCreationException("Tạo câu hỏi và đáp án cho game Sắp xếp từ thành câu thất bại. Vui lòng thử lại sau.");
+            return resList;
         }
+        return List.of();
+
     }
 
-    /**
-     * Tách câu thành token và GIỮ dấu câu là token riêng.
-     * Đủ dùng cho lớp 3: xử lý . , ! ? ; : và ngoặc kép/ngoặc đơn cơ bản.
-     * Ví dụ: "She is reading a book." -> ["She","is","reading","a","book","."]
-     */
-    private List<String> tokenizeKeepPunct(String sentence) {
-        if (sentence == null || sentence.isBlank()) return List.of();
+    public List<WordToSentenceRes> getWordToSentenceGame(long lessonId){
+        System.out.println("READY WORD TO SENTENCE GAME");
+        Long gameId = gameRepository.findGameIdByTypeAndLessonId(WORD_TO_SENTENCE,lessonId)
+                .orElseThrow(()->new NotFoundException("Bai hoc nay chua co game SAP XEP TU THANH CAU"));
+        if(gameId!=null){
+            List<GameQuestion> questionList = gameQuestionRepository.findByGameId(gameId);
 
-        // Chèn khoảng trắng quanh các dấu phổ biến để split
-        String spaced = sentence
-                .replaceAll("([.,!?;:])", " $1 ")
-                .replaceAll("([()\"“”‘’])", " $1 ")   // ngoặc và dấu trích dẫn
-                .replaceAll("\\s+", " ")              // gọn khoảng trắng
-                .trim();
+            List<WordToSentenceRes> resList = new ArrayList<>();
 
-        String[] parts = spaced.split(" ");
-        List<String> tokens = new ArrayList<>();
-        for (String p : parts) {
-            if (!p.isBlank()) tokens.add(p);
+            for(GameQuestion question: questionList){
+                WordToSentenceRes questionRes = new WordToSentenceRes();
+                questionRes.setId(question.getId());
+                questionRes.setGameId(gameId);
+                questionRes.setPosition(question.getPosition());
+                questionRes.setQuestionText(question.getQuestionText());
+                questionRes.setRewardCore(question.getRewardCore());
+
+                List<GameOption> options = gameOptionRepository.findByGameQuestionId(question.getId());
+                List<WordToSentenceOptsRes> optResList = new ArrayList<>();
+                for(GameOption option: options){
+                    WordToSentenceOptsRes optRes = new WordToSentenceOptsRes();
+                    optRes.setId(option.getId());
+                    optRes.setQuestionId(option.getGameQuestion().getId());
+                    optRes.setAnswerText(option.getAnswerText());
+                    optRes.setPosition(option.getPosition());
+                    optRes.setCorrect(option.isCorrect());
+                    optResList.add(optRes);
+                }
+                questionRes.setOpts(optResList);
+                resList.add(questionRes);
+            }
+            return resList;
         }
-        return tokens;
+        return List.of();
+
     }
 
-    private String maskFirstOccurrence(String sentence, String word, String placeholder) {
-        // (?i) bỏ qua hoa/thường
-        String regex = "(?i)" + Pattern.quote(word.trim());
-        return sentence.replaceFirst(regex, placeholder);
-    }
-    private boolean containsLoose(String sentence, String word) {
-        String a = normalize(sentence);
-        String b = normalize(word);
-        return a.contains(b);
-    }
-    private String normalize(String s) {
-        String t = s.toLowerCase(Locale.ROOT).trim();
-        // Bỏ dấu tiếng Việt:
-        return Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
-    }
+
 }
 
 

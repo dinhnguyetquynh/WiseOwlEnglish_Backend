@@ -54,4 +54,7 @@ public class Vocabulary {
     @JoinColumn(name = "lesson_id")
     @JsonIgnore
     private Lesson lessonVocabulary;
+
+    @Column(name = "is_for_learning")
+    private boolean isForLearning;
 }

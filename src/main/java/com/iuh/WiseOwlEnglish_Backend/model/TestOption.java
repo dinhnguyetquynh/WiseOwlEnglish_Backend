@@ -34,7 +34,7 @@ public class TestOption {
 
     // Nội dung option (đa hình)
     @Enumerated(EnumType.STRING)
-    @Column(name = "content_type", nullable = false, length = 16)
+    @Column(name = "content_type", nullable = true, length = 16)
     private ContentType contentType;     // TEXT/VOCAB/SENTENCE/IMAGE/AUDIO
 
     @Column(name = "content_ref_id")

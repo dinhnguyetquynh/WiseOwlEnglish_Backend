@@ -1,6 +1,7 @@
 package com.iuh.WiseOwlEnglish_Backend.controller;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonByClassRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonByGradeRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonDTORS;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonsByAgeRes;
 import com.iuh.WiseOwlEnglish_Backend.service.LessonQueryService;
@@ -37,6 +38,12 @@ public class LessonController {
     ) {
         // TODO (khuyến nghị): verify profileId thuộc về principal.getUsername()
         LessonByClassRes res = lessonService.getLessonsForProfile(profileId);
+        return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/lessons/by-grade")
+    public ResponseEntity<List<LessonByGradeRes>> listLessonByGrade(@RequestParam long gradeId){
+        List<LessonByGradeRes> res = lessonService.getListLessonByGrade(gradeId);
         return ResponseEntity.ok(res);
     }
 }

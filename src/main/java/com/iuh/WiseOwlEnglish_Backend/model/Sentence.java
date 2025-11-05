@@ -44,4 +44,7 @@ public class Sentence {
     @JoinColumn(name = "lesson_id")
     @JsonIgnore
     private Lesson lessonSentence;
+
+    @Column(name = "is_for_learning")
+    private boolean isForLearning;
 }

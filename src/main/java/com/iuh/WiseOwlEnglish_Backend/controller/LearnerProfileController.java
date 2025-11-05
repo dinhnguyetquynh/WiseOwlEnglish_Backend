@@ -56,4 +56,10 @@ public class LearnerProfileController {
         return ResponseEntity.status(201).body(res);
 
     }
+
+    @GetMapping("/get-profile/{id}")
+    public ResponseEntity<LearnerProfileRes> getProfileById(@PathVariable("id") Long id){
+        LearnerProfileRes profileRes = service.getLearnerProfile(id);
+        return ResponseEntity.ok(profileRes);
+    }
 }

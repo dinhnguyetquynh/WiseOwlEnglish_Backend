@@ -24,7 +24,7 @@ public class SentenceService {
     List<SentenceMediaRes> sentenceMediaResList;
 
     public List<SentenceMediaRes> getSentenceMediaResListByLessonId(Long lessonId) {
-        List<Sentence> sentences = sentenceRepository.findByLessonSentenceIdOrderByOrderIndexAsc(lessonId);
+        List<Sentence> sentences = sentenceRepository.findByLessonSentence_IdAndIsForLearning(lessonId,true);
 
         sentenceMediaResList = new ArrayList<>();
         for (Sentence sentence : sentences) {

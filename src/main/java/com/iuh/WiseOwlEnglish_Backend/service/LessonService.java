@@ -1,9 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonBriefRes;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonByClassRes;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonDTORS;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonsByAgeRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
 import com.iuh.WiseOwlEnglish_Backend.enums.ProgressStatus;
 import com.iuh.WiseOwlEnglish_Backend.mapper.LessonMapper;
 import com.iuh.WiseOwlEnglish_Backend.model.GradeLevel;
@@ -70,6 +67,7 @@ public class LessonService {
             lessonBriefRes.setOrderIndex(l.getOrderIndex());
             lessonBriefRes.setPercentComplete(pct);
             lessonBriefRes.setStatus(status);
+            lessonBriefRes.setMascot(l.getMascot());
             items.add(lessonBriefRes);
         }
 
@@ -84,6 +82,27 @@ public class LessonService {
         return lessonRes;
     }
 
+
+
+    //FUNCTION FOR ADMIN
+
+    public List<LessonByGradeRes> getListLessonByGrade(long gradeId){
+        List<Lesson> lessonList = lessonRepository.findByGradeLevel_IdOrderByOrderIndexAsc(gradeId);
+
+        List<LessonByGradeRes> lessonByGradeRes = new ArrayList<>();
+        for(Lesson lesson:lessonList){
+            LessonByGradeRes res = new LessonByGradeRes();
+            res.setId(lesson.getId());
+            res.setUnitName(lesson.getUnitName());
+            res.setLessonName(lesson.getLessonName());
+            res.setActive(lesson.isActive());
+            res.setMascot(lesson.getMascot());
+            res.setUpdatedAt(lesson.getUpdatedAt());
+            res.setOrderIndex(lesson.getOrderIndex());
+            lessonByGradeRes.add(res);
+        }
+        return lessonByGradeRes;
+    }
 
 
 

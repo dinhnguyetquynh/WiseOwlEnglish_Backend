@@ -23,6 +23,7 @@ public class UploadController {
             @RequestPart("file") MultipartFile file,
             @AuthenticationPrincipal User principal
     ) {
+        System.out.println("ĐÃ GOI API UPLOAD ANH");
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "File rỗng"));
         }

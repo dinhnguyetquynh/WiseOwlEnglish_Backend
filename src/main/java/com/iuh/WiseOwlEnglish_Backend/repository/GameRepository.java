@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -22,5 +23,5 @@ public interface GameRepository extends JpaRepository<Game, Long> {
     );
     // Phương thức kiểm tra sự tồn tại
     boolean existsByTypeAndLessonId(GameType type, Long lessonId);
-
+    List<Game> findByLesson_Id(Long lessonId);
 }

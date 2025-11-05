@@ -21,10 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -165,5 +162,9 @@ public class LearnerProfileService {
         return res;
     }
 
+    public LearnerProfileRes getLearnerProfile(Long profileId){
+        LearnerProfile proflie = learnerProfileRepo.findById(profileId).orElseThrow(()-> new NotFoundException("Không tìm thấy profile: "+profileId));
+        return learnerProfileMapper.toDTO(proflie);
+    }
 
 }

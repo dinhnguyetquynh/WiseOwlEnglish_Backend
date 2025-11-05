@@ -2,13 +2,16 @@ package com.iuh.WiseOwlEnglish_Backend.dto.respone;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
-public class LessonBriefRes {
+public class LessonByGradeRes {
     private Long id;
     private String unitName;
     private String lessonName;
     private int orderIndex;
-    private int percentComplete;
-    private String status;
+    private boolean active;
+    private LocalDateTime updatedAt;
     private String mascot;
+
 }

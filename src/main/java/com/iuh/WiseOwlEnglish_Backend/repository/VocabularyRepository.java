@@ -19,4 +19,7 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, Long> {
     List<Vocabulary> findAllByLessonIdWithAssets(@Param("lessonId") Long lessonId);
 
     Optional<Vocabulary> findById(long id);
+
+    List<Vocabulary> findByLessonVocabulary_IdAndIsForLearning(Long lessonId, boolean isForLearning);
+
 }

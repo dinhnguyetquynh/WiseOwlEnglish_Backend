@@ -2,10 +2,8 @@ package com.iuh.WiseOwlEnglish_Backend.dto.respone;
 
 import lombok.Data;
 
-import java.util.List;
-
 @Data
-public class TestRes {
+public class TestResByLesson {
     private Long id;
     private Long lessonId;
     private String title;
@@ -13,5 +11,4 @@ public class TestRes {
     private String description;
     private Integer durationMin;
     private Boolean active;
-    private List<TestQuestionRes> questionRes;
 }

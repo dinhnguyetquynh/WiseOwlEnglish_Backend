@@ -52,6 +52,7 @@ public class TestAttempt {
     @Column(name = "status", length = 16, nullable = false)
     private TestAttemptStatus status;
 
+    //thoi gian lam bai
     @Column(name = "duration_min")
     private Integer durationMin;
 

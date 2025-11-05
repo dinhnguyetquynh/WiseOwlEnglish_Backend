@@ -4,12 +4,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
-public class TestOptionRes {
+public class WordToSentenceOptsRes {
     private Long id;
-    private String optionText;
+    private Long questionId;
     @JsonProperty("isCorrect")
     private boolean isCorrect;
     private int position;
-    private String side;
-    private String pairKey;
+    private String answerText;
 }

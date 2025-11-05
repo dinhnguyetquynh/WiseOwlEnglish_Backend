@@ -58,4 +58,6 @@ public class Lesson {
     @JsonIgnore
     private List<Test> tests;
 
+    private String mascot;
+
 }

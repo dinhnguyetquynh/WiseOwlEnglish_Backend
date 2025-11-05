@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.VocabTestRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.VocabularyDTORes;
 import com.iuh.WiseOwlEnglish_Backend.mapper.VocabularyMapper;
 import com.iuh.WiseOwlEnglish_Backend.repository.VocabularyRepository;
@@ -20,7 +21,7 @@ public class VocabularyService {
 
     public List<VocabularyDTORes> getByLessonId(Long lessonId) {
         // 1) Lấy entity đã JOIN FETCH mediaAssets
-        var entities = vocabularyRepository.findAllByLessonIdWithAssets(lessonId);
+        var entities = vocabularyRepository.findByLessonVocabulary_IdAndIsForLearning(lessonId,true);
 
         // Debug entity
         entities.forEach(v ->
@@ -46,4 +47,7 @@ public class VocabularyService {
 
         return dtos;
     }
+
+    //chuc nang cho admin
+
 }

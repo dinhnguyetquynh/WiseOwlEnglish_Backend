@@ -64,4 +64,7 @@ public class TestAnswer {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "pairs_json")
+    private String pairsJson;
 }
