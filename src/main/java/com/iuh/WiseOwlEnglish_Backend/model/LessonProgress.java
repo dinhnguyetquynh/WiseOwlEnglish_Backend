@@ -1,6 +1,7 @@
 package com.iuh.WiseOwlEnglish_Backend.model;
 
 import com.iuh.WiseOwlEnglish_Backend.enums.ItemType;
+import com.iuh.WiseOwlEnglish_Backend.enums.LessonProgressStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,6 +27,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class LessonProgress {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -41,7 +43,8 @@ public class LessonProgress {
     private ItemType lastItemType;
 
     @Column(name = "last_item_ref_id")
-    private int lastItemRefId;
+    private Long lastItemRefId;
+
     @Column(name = "last_item_index")
     private int lastItemIndex;
 
@@ -53,5 +56,8 @@ public class LessonProgress {
     private LocalDateTime updatedAt;
 
     //add status for lesson progress(active, completed, not started)
+
+    @Column(name = "status")
+    private LessonProgressStatus status;
 
 }

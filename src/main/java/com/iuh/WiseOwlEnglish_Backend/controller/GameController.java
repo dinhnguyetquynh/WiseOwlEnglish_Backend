@@ -73,8 +73,24 @@ public class GameController {
         return ResponseEntity.ok(games);
     }
 
+    @GetMapping("/lesson-games-by-grade")
+    public ResponseEntity<List<LessonWithGamesDTO>> getLessonsWithGamesByGrade(@RequestParam long gradeId) {
+        List<LessonWithGamesDTO> res = gameServiceAdmin.getLessonsWithGamesByGrade(gradeId);
+        return ResponseEntity.ok(res);
+    }
 
 
+    @GetMapping("/details-games-of-lesson/{lessonId}")
+    public ResponseEntity<GamesOfLessonRes> getGamesDetailByLesson(@PathVariable long lessonId) {
+        // Giả sử logic service của bạn nằm trong GameService
+        GamesOfLessonRes res = gameServiceAdmin.getGamesDetailByLesson(lessonId);
+        return ResponseEntity.ok(res);
+    }
 
+    @GetMapping("/types-by-grade")
+    public ResponseEntity<List<String>> getGameTypesByGrade(@RequestParam int gradeOrder) {
+        List<String> types = gameServiceAdmin.getGameTypesByGrade(gradeOrder);
+        return ResponseEntity.ok(types);
+    }
 
 }

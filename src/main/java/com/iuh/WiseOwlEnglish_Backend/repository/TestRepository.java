@@ -10,5 +10,6 @@ import java.util.Optional;
 public interface TestRepository extends JpaRepository<Test, Long> {
 //    Optional<Test> findByLessonTest_Id(Long lessonId);
     List<Test> findByLessonTest_Id(Long lessonId);
+    long countByLessonTest_Id(Long lessonId);
 
 }

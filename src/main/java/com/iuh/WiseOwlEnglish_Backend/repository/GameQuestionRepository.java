@@ -16,4 +16,7 @@ public interface GameQuestionRepository extends JpaRepository<GameQuestion,Long>
     ORDER BY gq.position ASC
     """)
     List<GameQuestion> findByGameId(@Param("gameId") Long gameId);
+    @Query("SELECT COUNT(gq) FROM GameQuestion gq WHERE gq.game.lesson.id = :lessonId")
+    long countByLessonId(@Param("lessonId") Long lessonId);
+    long countByGameId(Long gameId);
 }

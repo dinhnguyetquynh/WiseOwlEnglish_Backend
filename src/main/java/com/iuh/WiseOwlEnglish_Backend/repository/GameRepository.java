@@ -24,4 +24,8 @@ public interface GameRepository extends JpaRepository<Game, Long> {
     // Phương thức kiểm tra sự tồn tại
     boolean existsByTypeAndLessonId(GameType type, Long lessonId);
     List<Game> findByLesson_Id(Long lessonId);
+
+    long countByLesson_Id(Long lessonId);
+
+    List<Game> findByLesson_IdIn(List<Long> lessonIds);
 }

@@ -55,6 +55,9 @@ dependencies {
 
 	implementation("com.cloudinary:cloudinary-http44:1.38.0")
 
+	// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-cache
+	implementation("org.springframework.boot:spring-boot-starter-cache:4.0.0-M3")
+
 	implementation("io.jsonwebtoken:jjwt-api:0.11.5")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5") // dùng Jackson parse JSON

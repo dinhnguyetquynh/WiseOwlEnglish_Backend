@@ -22,4 +22,5 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, Long> {
 
     List<Vocabulary> findByLessonVocabulary_IdAndIsForLearning(Long lessonId, boolean isForLearning);
 
+    long countByLessonVocabulary_IdAndIsForLearning(Long lessonId, boolean isForLearning);
 }

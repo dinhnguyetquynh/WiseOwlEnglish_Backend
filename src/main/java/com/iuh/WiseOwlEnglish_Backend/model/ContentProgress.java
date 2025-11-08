@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ContentProgress {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -48,7 +49,7 @@ public class ContentProgress {
     private ItemType itemType;
 
     @Column(name = "item_ref_id", nullable = false)
-    private int itemRefId;
+    private Long itemRefId;
     @Column(name = "item_index", nullable = false)
     private int itemIndex; // Index of the item within its type (e.g., 1st vocab, 2nd sentence, etc.)
 

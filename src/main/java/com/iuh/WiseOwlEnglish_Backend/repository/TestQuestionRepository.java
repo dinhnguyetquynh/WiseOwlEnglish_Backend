@@ -12,4 +12,6 @@ import java.util.List;
 public interface TestQuestionRepository extends JpaRepository<TestQuestion, Long> {
     @Query("SELECT tq FROM TestQuestion tq WHERE tq.test.id = :testId ORDER BY tq.orderInTest ASC")
     List<TestQuestion> findByTestIdOrderByOrderInTest(@Param("testId") Long testId);
+    @Query("SELECT COUNT(tq) FROM TestQuestion tq WHERE tq.test.lessonTest.id = :lessonId")
+    long countByLessonId(@Param("lessonId") Long lessonId);
 }

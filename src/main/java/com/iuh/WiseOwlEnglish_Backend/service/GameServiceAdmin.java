@@ -3,8 +3,7 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameOptionReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameQuestionReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameReq;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.GameRes;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.GameResByLesson;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
 import com.iuh.WiseOwlEnglish_Backend.enums.ContentType;
 import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.enums.PromptType;
@@ -17,16 +16,17 @@ import com.iuh.WiseOwlEnglish_Backend.mapper.GameMapper;
 import com.iuh.WiseOwlEnglish_Backend.mapper.GameMapperIf;
 import com.iuh.WiseOwlEnglish_Backend.model.*;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
-import jakarta.transaction.Transactional;
+//import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.aspectj.weaver.ast.Not;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -453,6 +453,93 @@ public class GameServiceAdmin {
         List<Game> gameList = gameRepository.findByLesson_Id(lessonId);
         List<GameResByLesson> gameResByLessons = gameMapperIf.gamesToGameResByLessons(gameList);
         return gameResByLessons;
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public List<LessonWithGamesDTO> getLessonsWithGamesByGrade(Long gradeId) {
+        // 1. Lấy tất cả Lesson thuộc GradeLevel, sắp xếp theo thứ tự
+        List<Lesson> lessons = lessonRepository.findByGradeLevel_IdOrderByOrderIndexAsc(gradeId);
+        if (lessons.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. Lấy danh sách ID của các Lesson
+        List<Long> lessonIds = lessons.stream().map(Lesson::getId).toList();
+
+        // 3. Lấy tất cả Game thuộc danh sách Lesson ID (chỉ 1 query)
+        List<Game> games = gameRepository.findByLesson_IdIn(lessonIds);
+
+        // 4. Nhóm các Game theo Lesson ID để tra cứu nhanh
+        Map<Long, List<Game>> gamesByLessonIdMap = games.stream()
+                .collect(Collectors.groupingBy(game -> game.getLesson().getId()));
+
+        // 5. Ánh xạ sang DTO
+        return lessons.stream().map(lesson -> {
+            LessonWithGamesDTO lessonDTO = new LessonWithGamesDTO();
+            lessonDTO.setLessonId(lesson.getId());
+            lessonDTO.setUnitName(lesson.getUnitName());
+            lessonDTO.setLessonName(lesson.getLessonName());
+
+            // Lấy danh sách game của lesson này từ Map
+            List<Game> lessonGames = gamesByLessonIdMap.getOrDefault(lesson.getId(), Collections.emptyList());
+
+            // Ánh xạ danh sách Game sang GameInfoDTO
+            List<GameInfoDTO> gameDTOs = lessonGames.stream()
+                    .map(game -> new GameInfoDTO(game.getId(), game.getType().toString()))
+                    .collect(Collectors.toList());
+
+            lessonDTO.setGames(gameDTOs);
+            return lessonDTO;
+        }).collect(Collectors.toList());
+    }
+
+    public GamesOfLessonRes getGamesDetailByLesson(long lessonId){
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(()-> new NotFoundException("Khong tim thay lesson co id :"+lessonId));
+        List<Game> gameList = gameRepository.findByLesson_Id(lessonId);
+
+        GamesOfLessonRes res = new GamesOfLessonRes();
+        res.setLessonId(lesson.getId());
+        res.setUnitName(lesson.getUnitName());
+        res.setLessonName(lesson.getLessonName());
+
+
+        List<GameDetailRes> gameDetailResList = new ArrayList<>();
+        for(Game game:gameList){
+            GameDetailRes detailRes = new GameDetailRes();
+            detailRes.setId(game.getId());
+            long total = gameQuestionRepository.countByGameId(game.getId());
+            detailRes.setTotalQuestion(total);
+            detailRes.setGameType(game.getType().toString());
+            detailRes.setUpdatedDate(game.getUpdatedAt());
+            detailRes.setTitle(game.getTitle());
+            gameDetailResList.add(detailRes);
+        }
+        res.setGames(gameDetailResList);
+        return res;
+    }
+
+    public List<String> getGameTypesByGrade(int gradeOrder) {
+        // Sử dụng GameType enum đã có
+        switch (gradeOrder) {
+            case 1,2: // Lớp 1
+                return List.of(
+                        GameType.PICTURE_WORD_MATCHING.toString(),
+                        GameType.SOUND_WORD_MATCHING.toString(),
+                        GameType.PICTURE_SENTENCE_MATCHING.toString()
+                );
+            case 3,4,5: // Lớp 3
+                return List.of(
+                        GameType.PICTURE_WORD_WRITING.toString(),
+                        GameType.PICTURE4_WORD4_MATCHING.toString(),
+                        GameType.SENTENCE_HIDDEN_WORD.toString(),
+                        GameType.WORD_TO_SENTENCE.toString()
+                );
+            default:
+                return Collections.emptyList();
+        }
     }
 
 }
