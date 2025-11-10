@@ -1,9 +1,11 @@
 package com.iuh.WiseOwlEnglish_Backend.controller;
 
+import com.iuh.WiseOwlEnglish_Backend.dto.request.GameAnswerReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
 import com.iuh.WiseOwlEnglish_Backend.service.GameService;
 import com.iuh.WiseOwlEnglish_Backend.service.GameServiceAdmin;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -91,6 +93,23 @@ public class GameController {
     public ResponseEntity<List<String>> getGameTypesByGrade(@RequestParam int gradeOrder) {
         List<String> types = gameServiceAdmin.getGameTypesByGrade(gradeOrder);
         return ResponseEntity.ok(types);
+    }
+
+    @GetMapping("/review-list")
+    public ResponseEntity<List<GameResByLesson>> getReviewGames(
+            @RequestParam long lessonId,
+            @RequestParam String category // "vocab" or "sentence"
+    ) {
+        List<GameResByLesson> games = gameService.getGamesForReview(lessonId, category);
+        return ResponseEntity.ok(games);
+    }
+
+    @PostMapping("/submit-answer")
+    public ResponseEntity<GameAnswerRes> submitGameAnswer(
+            @Valid @RequestBody GameAnswerReq req
+    ) {
+        GameAnswerRes res = gameService.submitAnswer(req);
+        return ResponseEntity.ok(res);
     }
 
 }

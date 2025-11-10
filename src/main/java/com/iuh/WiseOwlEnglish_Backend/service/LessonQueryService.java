@@ -2,6 +2,7 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonBriefRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonsByAgeRes;
+import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.model.GradeLevel;
 import com.iuh.WiseOwlEnglish_Backend.model.LearnerProfile;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
@@ -107,4 +108,17 @@ public class LessonQueryService {
     public long getTotalTestQuestion(Long lessonId) {
         return testQuestionRepo.countByLessonId(lessonId);
     }
+
+    @Cacheable(value = "lessonTotals", key = "#lessonId + '_vocab_games'")
+    public long getTotalVocabGameQuestions(Long lessonId) {
+        // Gọi hàm repo mới, dùng Set static từ GameType
+        return gameQuestionRepo.countByLessonIdAndGameTypes(lessonId, GameType.VOCAB_GAMES);
+    }
+
+    @Cacheable(value = "lessonTotals", key = "#lessonId + '_sentence_games'")
+    public long getTotalSentenceGameQuestions(Long lessonId) {
+        // Gọi hàm repo mới, dùng Set static từ GameType
+        return gameQuestionRepo.countByLessonIdAndGameTypes(lessonId, GameType.SENTENCE_GAMES);
+    }
+
 }

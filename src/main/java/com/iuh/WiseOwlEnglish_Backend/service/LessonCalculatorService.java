@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
+import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.enums.ItemStatus;
 import com.iuh.WiseOwlEnglish_Backend.enums.ItemType;
 import com.iuh.WiseOwlEnglish_Backend.model.LessonProgress;
@@ -33,10 +34,14 @@ public class LessonCalculatorService {
         // NEN DUNG CACHE
         long totalVocab = queryService.getTotalVocab(lessonId);
         long totalSentences = queryService.getTotalSentences(lessonId);
-        long totalGameQuestions = queryService.getTotalGameQuestion(lessonId);
+//        long totalGameQuestions = queryService.getTotalGameQuestion(lessonId);
+        long totalVocabGames = queryService.getTotalVocabGameQuestions(lessonId);
+        long totalSentenceGames = queryService.getTotalSentenceGameQuestions(lessonId);
+
+
         long totalTestQuestions = queryService.getTotalTestQuestion(lessonId);
 
-        double totalItems = totalVocab + totalSentences + totalGameQuestions + totalTestQuestions;
+        double totalItems = totalVocab + totalSentences + totalVocabGames + totalSentenceGames + totalTestQuestions;
 
         if (totalItems == 0) {
             // Tránh chia cho 0 nếu bài học trống
@@ -49,13 +54,18 @@ public class LessonCalculatorService {
                 learnerProfileId, lessonId, ItemType.VOCAB, ItemStatus.COMPLETED);
         long completedSentences = contentProgressRepo.countByLearnerProfile_IdAndLesson_IdAndItemTypeAndStatus(
                 learnerProfileId, lessonId, ItemType.SENTENCE, ItemStatus.COMPLETED);
-        long completedGameQuestions = contentProgressRepo.countByLearnerProfile_IdAndLesson_IdAndItemTypeAndStatus(
-                learnerProfileId, lessonId, ItemType.GAME_QUESTION, ItemStatus.COMPLETED); // ✅ SỬA
-        System.out.println("SỐ GAME QUESTION ĐÃ HOÀN THÀNH LÀ "+completedGameQuestions);
+//        long completedGameQuestions = contentProgressRepo.countByLearnerProfile_IdAndLesson_IdAndItemTypeAndStatus(
+//                learnerProfileId, lessonId, ItemType.GAME_QUESTION, ItemStatus.COMPLETED); // ✅ SỬA
+//        System.out.println("SỐ GAME QUESTION ĐÃ HOÀN THÀNH LÀ "+completedGameQuestions);
+
+        long completedVocabGames = contentProgressRepo.countCompletedGameQuestionsByTypes(
+                learnerProfileId, lessonId, ItemStatus.COMPLETED, GameType.VOCAB_GAMES);
+        long completedSentenceGames = contentProgressRepo.countCompletedGameQuestionsByTypes(
+                learnerProfileId, lessonId, ItemStatus.COMPLETED, GameType.SENTENCE_GAMES);
         long completedTestQuestions = contentProgressRepo.countByLearnerProfile_IdAndLesson_IdAndItemTypeAndStatus(
                 learnerProfileId, lessonId, ItemType.TEST_QUESTION, ItemStatus.COMPLETED); // ✅ SỬA
 
-        double completedItems = completedVocab + completedSentences + completedGameQuestions + completedTestQuestions;
+        double completedItems = completedVocab + completedSentences + completedVocabGames + completedSentenceGames + completedTestQuestions;
 
         // C. Tính toán %
         double percentage = (completedItems / totalItems) * 100.0;

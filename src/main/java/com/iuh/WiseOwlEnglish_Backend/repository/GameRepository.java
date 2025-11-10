@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,4 +29,6 @@ public interface GameRepository extends JpaRepository<Game, Long> {
     long countByLesson_Id(Long lessonId);
 
     List<Game> findByLesson_IdIn(List<Long> lessonIds);
+
+    List<Game> findByLesson_IdAndTypeIn(Long lessonId, Collection<GameType> types);
 }

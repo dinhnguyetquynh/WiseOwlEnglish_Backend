@@ -1,14 +1,13 @@
 package com.iuh.WiseOwlEnglish_Backend.controller;
 
+import com.iuh.WiseOwlEnglish_Backend.dto.request.LessonLockStatusReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.LessonProgressReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonLockStatusRes;
 import com.iuh.WiseOwlEnglish_Backend.service.ProgressTrackingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/lesson-progress")
@@ -27,6 +26,12 @@ public class LessonProgressController {
                 req.getItemRefId()
         );
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/lock-status")
+    public ResponseEntity<LessonLockStatusRes> getLessonLockStatus(@RequestParam Long lessonId,@RequestParam Long profileId){
+        LessonLockStatusRes res = progressTrackingService.getLessonLockStatus(profileId,lessonId);
+        return ResponseEntity.ok(res);
     }
 
 }

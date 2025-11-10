@@ -39,7 +39,7 @@ public class LessonController {
     }
 
     @GetMapping("/lessons/by-grade")
-    public ResponseEntity<List<LessonByGradeRes>> listLessonByGrade(@RequestParam long gradeId){
+    public ResponseEntity<List<LessonByGradeRes>> listLessonByGrade(@RequestParam long gradeId) {
         List<LessonByGradeRes> res = lessonService.getListLessonByGrade(gradeId);
         return ResponseEntity.ok(res);
     }
