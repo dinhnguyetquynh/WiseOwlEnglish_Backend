@@ -5,9 +5,11 @@ import com.iuh.WiseOwlEnglish_Backend.dto.request.LoginRequest;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.ResendOtpReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.UserAccountReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.VerifyOtpReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.AdminAccountRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.LoginRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.TokenRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.UserAccountRes;
+import com.iuh.WiseOwlEnglish_Backend.enums.RoleAccount;
 import com.iuh.WiseOwlEnglish_Backend.model.UserAccount;
 import com.iuh.WiseOwlEnglish_Backend.repository.LearnerProfileRepository;
 import com.iuh.WiseOwlEnglish_Backend.service.AuthService;
@@ -79,6 +81,7 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    //API LOGIN CHO ADMIN VA LEARNER
     @PostMapping("/login")
     public ResponseEntity<LoginRes> login(@Validated @RequestBody LoginRequest req) {
         var auth = authenticationManager.authenticate(
@@ -98,10 +101,24 @@ public class AuthController {
                 Duration.ofDays(30)
         );
         final long userId = principal.getId();
-        int count = profileRepo.countByUserAccount_Id(userId);
+        boolean isAdmin = principal.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SUPERADMIN"));
 
-        return ResponseEntity.ok(new LoginRes(access, refresh, count > 0,count));
+        int count = 0;
+        boolean hasProfiles = false;
+        if (!isAdmin) {
+            count = profileRepo.countByUserAccount_Id(userId);
+            hasProfiles = count > 0;
+        }
+
+        String authority = principal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .findFirst()
+                .orElse("");
+        RoleAccount roleAccount = RoleAccount.fromAuthority(authority);
+        return ResponseEntity.ok(new LoginRes(access, refresh, hasProfiles, count,roleAccount));
     }
+
 
     @PostMapping("/refresh")
     public ResponseEntity<TokenRes> refresh(@RequestBody Map<String, String> body) {

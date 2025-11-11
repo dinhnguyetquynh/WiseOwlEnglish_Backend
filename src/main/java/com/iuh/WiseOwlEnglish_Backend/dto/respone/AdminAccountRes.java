@@ -9,6 +9,7 @@ import lombok.Data;
 @Data
 public class AdminAccountRes {
     private Long id;
-    @Enumerated(EnumType.STRING)
     private RoleAccount roleAccount;
+    private String accessToken;
+    private String refreshToken;
 }
