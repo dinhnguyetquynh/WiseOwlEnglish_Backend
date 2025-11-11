@@ -85,6 +85,7 @@ public class GameService {
             List<GameQuestion> gameQuestions = gameQuestionRepository.findByGameId(gameId.get());
             return gameQuestions.stream().map(gameQuestion -> {
                 SoundWordQuestionRes res = new SoundWordQuestionRes();
+                res.setGameId(gameId.get());
                 res.setId(gameQuestion.getId());
                 res.setPosition(gameQuestion.getPosition());
                 res.setRewardPoint(gameQuestion.getRewardCore());
@@ -381,7 +382,7 @@ public class GameService {
             attempt.setWrongCount(attempt.getWrongCount() + 1);
         }
         gameAttemptRepository.save(attempt);
-
+        System.out.println("KET QUA CUA CAU 1 LA :"+result.isCorrect);
         // 6. Trả kết quả về cho FE
         return GameAnswerRes.builder()
                 .isCorrect(result.isCorrect())
