@@ -381,6 +381,29 @@ public class GameService {
         } else {
             attempt.setWrongCount(attempt.getWrongCount() + 1);
         }
+
+        // ========== BẮT ĐẦU LOGIC MỚI ==========
+        // 5.1. Kiểm tra xem đây có phải là câu hỏi cuối cùng không
+
+        // Lấy tất cả câu hỏi của game này, theo đúng thứ tự
+        List<GameQuestion> allQuestionsInGame = gameQuestionRepository
+                .findByGameIdOrderByPositionAsc(game.getId());
+
+        if (!allQuestionsInGame.isEmpty()) {
+            // Lấy câu hỏi cuối cùng trong danh sách
+            GameQuestion lastQuestion = allQuestionsInGame.get(allQuestionsInGame.size() - 1);
+
+            // So sánh ID của câu hiện tại với ID của câu cuối cùng
+            if (question.getId().equals(lastQuestion.getId())) {
+                // Nếu đây LÀ câu cuối cùng, chuyển trạng thái
+                attempt.setStatus(AttemptStatus.COMPLETED);
+
+                // (Nên thêm trường 'completedAt' vào GameAttempt để lưu thời gian hoàn thành)
+                // attempt.setCompletedAt(LocalDateTime.now());
+
+                System.out.println("Lượt chơi " + attempt.getId() + " đã HOÀN THÀNH!");
+            }
+        }
         gameAttemptRepository.save(attempt);
         System.out.println("KET QUA CUA CAU 1 LA :"+result.isCorrect);
         // 6. Trả kết quả về cho FE

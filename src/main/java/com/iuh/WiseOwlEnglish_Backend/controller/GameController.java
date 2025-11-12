@@ -75,13 +75,14 @@ public class GameController {
         return ResponseEntity.ok(games);
     }
 
+    //API LẤY DANH SÁCH GAME CỦA CÁC LESSON thuoc 1 lop(grade)
     @GetMapping("/lesson-games-by-grade")
     public ResponseEntity<List<LessonWithGamesDTO>> getLessonsWithGamesByGrade(@RequestParam long gradeId) {
         List<LessonWithGamesDTO> res = gameServiceAdmin.getLessonsWithGamesByGrade(gradeId);
         return ResponseEntity.ok(res);
     }
 
-
+    //Xem Chi tiet  cac game thuoc 1 lesson
     @GetMapping("/details-games-of-lesson/{lessonId}")
     public ResponseEntity<GamesOfLessonRes> getGamesDetailByLesson(@PathVariable long lessonId) {
         // Giả sử logic service của bạn nằm trong GameService
@@ -89,6 +90,9 @@ public class GameController {
         return ResponseEntity.ok(res);
     }
 
+    //api lấy cac game muon tao theo lop
+    //lop 1 la : PICTURE_WORD_MATCHING, SOUND_WORD_MATCHING, PICTURE_SENTENCE_MATCHING
+    //lop 3 la : PICTURE_WORD_WRITING, PICTURE4_WORD4_MATCHING, SENTENCE_HIDDEN_WORD, WORD_TO_SENTENCE
     @GetMapping("/types-by-grade")
     public ResponseEntity<List<String>> getGameTypesByGrade(@RequestParam int gradeOrder) {
         List<String> types = gameServiceAdmin.getGameTypesByGrade(gradeOrder);

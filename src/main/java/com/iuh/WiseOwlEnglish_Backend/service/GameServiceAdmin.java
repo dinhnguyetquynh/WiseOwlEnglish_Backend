@@ -160,8 +160,10 @@ public class GameServiceAdmin {
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
                 question.setPosition(questionReq.getPosition());
+                //id sound
                 question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
                 question.setPromptRefId(questionReq.getPromptRefId());
+
                 question.setRewardCore(questionReq.getRewardCore());
                 question.setCreatedAt(LocalDateTime.now());
                 question.setUpdatedAt(LocalDateTime.now());
@@ -171,8 +173,10 @@ public class GameServiceAdmin {
                 for(GameOptionReq optionReq:questionReq.getOptionReqs()){
                     GameOption option = new GameOption();
                     option.setGameQuestion(question);
+                    //id vocab
                     option.setContentType(ContentType.valueOf(optionReq.getContentType()));
                     option.setContentRefId(optionReq.getContentRefId());
+
                     option.setCorrect(optionReq.isCorrect());
                     option.setPosition(optionReq.getPosition());
                     option.setCreatedAt(LocalDateTime.now());
@@ -201,8 +205,11 @@ public class GameServiceAdmin {
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
                 question.setPosition(questionReq.getPosition());
+
+                //id img
                 question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
                 question.setPromptRefId(questionReq.getPromptRefId());
+
                 question.setQuestionText(questionReq.getQuestionText());
                 question.setRewardCore(questionReq.getRewardCore());
                 question.setCreatedAt(LocalDateTime.now());
@@ -213,8 +220,11 @@ public class GameServiceAdmin {
                 for(GameOptionReq optionReq:questionReq.getOptionReqs()){
                     GameOption option = new GameOption();
                     option.setGameQuestion(question);
+
+                    //id sentence
                     option.setContentType(ContentType.valueOf(optionReq.getContentType()));
                     option.setContentRefId(optionReq.getContentRefId());
+
                     option.setCorrect(optionReq.isCorrect());
                     option.setPosition(optionReq.getPosition());
                     option.setCreatedAt(LocalDateTime.now());
@@ -241,8 +251,10 @@ public class GameServiceAdmin {
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
                 question.setPosition(questionReq.getPosition());
+                //id img
                 question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
                 question.setPromptRefId(questionReq.getPromptRefId());
+
                 question.setQuestionText(questionReq.getQuestionText());
                 question.setRewardCore(questionReq.getRewardCore());
                 question.setCreatedAt(LocalDateTime.now());
@@ -253,8 +265,11 @@ public class GameServiceAdmin {
                 for(GameOptionReq optionReq:questionReq.getOptionReqs()){
                     GameOption option = new GameOption();
                     option.setGameQuestion(question);
+
+                    //id vocab
                     option.setContentType(ContentType.valueOf(optionReq.getContentType()));
                     option.setContentRefId(optionReq.getContentRefId());
+
                     option.setCorrect(optionReq.isCorrect());
                     option.setPosition(optionReq.getPosition());
                     option.setCreatedAt(LocalDateTime.now());
