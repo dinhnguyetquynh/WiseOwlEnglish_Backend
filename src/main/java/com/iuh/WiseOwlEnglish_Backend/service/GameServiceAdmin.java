@@ -537,7 +537,7 @@ public class GameServiceAdmin {
         return res;
     }
 
-    public List<String> getGameTypesByGrade(int gradeOrder, GameType type, long lessonId) {
+    public List<String> getGameTypesByGrade(int gradeOrder,long lessonId) {
         // 1. Chuẩn bị danh sách candidate theo grade
         List<GameType> candidates;
         switch (gradeOrder) {
@@ -560,14 +560,18 @@ public class GameServiceAdmin {
                 return Collections.emptyList();
         }
 
+        if (candidates.isEmpty()) {
+            return Collections.emptyList();
+        }
+
         // 2. Query 1 lần: lấy những type trong candidates đã tồn tại cho lessonId
         List<GameType> existed = gameRepository.findTypesByLessonIdAndTypeIn(lessonId, candidates);
-        Set<GameType> existedSet = new HashSet<>(existed);
+        Set<GameType> existedSet = existed == null ? Collections.emptySet() : new HashSet<>(existed);
 
-        // 3. Lọc offline và trả về tên enum (String)
+        // 3. Lọc offline (loại bỏ những type đã tồn tại) và trả về tên enum (String)
         return candidates.stream()
                 .filter(g -> !existedSet.contains(g))
-                .map(Enum::name) // hoặc .toString()
+                .map(Enum::name)
                 .collect(Collectors.toList());
     }
 

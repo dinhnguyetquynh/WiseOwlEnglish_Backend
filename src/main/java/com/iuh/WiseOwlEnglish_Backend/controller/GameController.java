@@ -95,10 +95,9 @@ public class GameController {
     @GetMapping("/types-by-grade")
     public ResponseEntity<List<String>> getGameTypesByGrade(
             @RequestParam int gradeOrder,
-            @RequestParam GameType type,
             @RequestParam long lessonId
     ) {
-        List<String> types = gameServiceAdmin.getGameTypesByGrade(gradeOrder, type, lessonId);
+        List<String> types = gameServiceAdmin.getGameTypesByGrade(gradeOrder, lessonId);
         return ResponseEntity.ok(types);
     }
 
