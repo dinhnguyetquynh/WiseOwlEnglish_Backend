@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.repository;
 
+import com.iuh.WiseOwlEnglish_Backend.enums.TestAttemptStatus;
 import com.iuh.WiseOwlEnglish_Backend.model.TestAttempt;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -32,4 +33,14 @@ public interface TestAttemptRepository extends JpaRepository<TestAttempt,Long> {
             @Param("learnerId") Long learnerId,
             @Param("lessonIds") List<Long> lessonIds
     );
+    /**
+     * Tìm tất cả các lần làm bài (đã hoàn thành) của 1 user cho 1 bài test,
+     * sắp xếp theo thời gian hoàn thành tăng dần (để vẽ biểu đồ).
+     */
+    List<TestAttempt> findByLearnerProfile_IdAndTest_IdAndStatusOrderByFinishedAtAsc(
+            Long learnerProfileId,
+            Long testId,
+            TestAttemptStatus status
+    );
+
 }

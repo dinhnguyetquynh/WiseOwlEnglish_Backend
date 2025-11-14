@@ -24,6 +24,7 @@ public interface GameRepository extends JpaRepository<Game, Long> {
     );
     // Phương thức kiểm tra sự tồn tại
     boolean existsByTypeAndLessonId(GameType type, Long lessonId);
+
     List<Game> findByLesson_Id(Long lessonId);
 
     long countByLesson_Id(Long lessonId);
@@ -31,4 +32,8 @@ public interface GameRepository extends JpaRepository<Game, Long> {
     List<Game> findByLesson_IdIn(List<Long> lessonIds);
 
     List<Game> findByLesson_IdAndTypeIn(Long lessonId, Collection<GameType> types);
+
+    @Query("select g.type from Game g where g.lesson.id = :lessonId and g.type in :types")
+    List<GameType> findTypesByLessonIdAndTypeIn(@Param("lessonId") Long lessonId,
+                                                @Param("types") Collection<GameType> types);
 }

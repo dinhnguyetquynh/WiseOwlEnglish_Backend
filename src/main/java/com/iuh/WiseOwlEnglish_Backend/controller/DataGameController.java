@@ -1,14 +1,13 @@
 package com.iuh.WiseOwlEnglish_Backend.controller;
 
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.MediaAssetImageDto;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.VocabOptionRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.DataGameForAdmin;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.MediaAssetForAdminDto;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.OptionsRes;
+import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.service.DataGameService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -18,15 +17,14 @@ import java.util.List;
 public class DataGameController {
     private final DataGameService dataGameService;
 
-    @GetMapping("/get-list-img/{lessonId}")
-    public ResponseEntity<List<MediaAssetImageDto>> getImgsOfVocabsByLessonId(@PathVariable long lessonId){
-        List<MediaAssetImageDto> res = dataGameService.getImgsOfVocabsByLessonId(lessonId);
-        return ResponseEntity.ok(res);
-    }
+    @GetMapping("/get-data")
+    public ResponseEntity<DataGameForAdmin> getDataGameForAdmin(
+            @RequestParam GameType gameType,
+            @RequestParam long lessonId
+    ) {
 
-    @GetMapping("/get-list-vocab/{lessonId}")
-    public ResponseEntity<List<VocabOptionRes>> getVocabsOptionByLessonId(@PathVariable long lessonId){
-        List<VocabOptionRes> res = dataGameService.getListVocabOptionByLessonId(lessonId);
-        return ResponseEntity.ok(res);
+        DataGameForAdmin data = dataGameService.getDataGameForAdmin(gameType, lessonId);
+
+        return ResponseEntity.ok(data);
     }
 }

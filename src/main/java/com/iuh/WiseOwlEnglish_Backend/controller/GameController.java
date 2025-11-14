@@ -3,6 +3,7 @@ package com.iuh.WiseOwlEnglish_Backend.controller;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameAnswerReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
+import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.service.GameService;
 import com.iuh.WiseOwlEnglish_Backend.service.GameServiceAdmin;
 import jakarta.validation.Valid;
@@ -90,12 +91,14 @@ public class GameController {
         return ResponseEntity.ok(res);
     }
 
-    //api lấy cac game muon tao theo lop
-    //lop 1 la : PICTURE_WORD_MATCHING, SOUND_WORD_MATCHING, PICTURE_SENTENCE_MATCHING
-    //lop 3 la : PICTURE_WORD_WRITING, PICTURE4_WORD4_MATCHING, SENTENCE_HIDDEN_WORD, WORD_TO_SENTENCE
+    //api trả về các loại game chưa có trong lesson cho Admin
     @GetMapping("/types-by-grade")
-    public ResponseEntity<List<String>> getGameTypesByGrade(@RequestParam int gradeOrder) {
-        List<String> types = gameServiceAdmin.getGameTypesByGrade(gradeOrder);
+    public ResponseEntity<List<String>> getGameTypesByGrade(
+            @RequestParam int gradeOrder,
+            @RequestParam GameType type,
+            @RequestParam long lessonId
+    ) {
+        List<String> types = gameServiceAdmin.getGameTypesByGrade(gradeOrder, type, lessonId);
         return ResponseEntity.ok(types);
     }
 

@@ -41,6 +41,7 @@ public class GameServiceAdmin {
     private final LessonRepository lessonRepository;
     private final GameMapper gameMapper;
     private final GameMapperIf gameMapperIf;
+    private final DataGameService dataGameService;
     //FUNCTION FOR ADMIN
     // add new game
     public GameRes createGame(GameReq req){
@@ -536,25 +537,39 @@ public class GameServiceAdmin {
         return res;
     }
 
-    public List<String> getGameTypesByGrade(int gradeOrder) {
-        // Sử dụng GameType enum đã có
+    public List<String> getGameTypesByGrade(int gradeOrder, GameType type, long lessonId) {
+        // 1. Chuẩn bị danh sách candidate theo grade
+        List<GameType> candidates;
         switch (gradeOrder) {
-            case 1,2: // Lớp 1
-                return List.of(
-                        GameType.PICTURE_WORD_MATCHING.toString(),
-                        GameType.SOUND_WORD_MATCHING.toString(),
-                        GameType.PICTURE_SENTENCE_MATCHING.toString()
+            case 1, 2:
+                candidates = List.of(
+                        GameType.PICTURE_WORD_MATCHING,
+                        GameType.SOUND_WORD_MATCHING,
+                        GameType.PICTURE_SENTENCE_MATCHING
                 );
-            case 3,4,5: // Lớp 3
-                return List.of(
-                        GameType.PICTURE_WORD_WRITING.toString(),
-                        GameType.PICTURE4_WORD4_MATCHING.toString(),
-                        GameType.SENTENCE_HIDDEN_WORD.toString(),
-                        GameType.WORD_TO_SENTENCE.toString()
+                break;
+            case 3, 4, 5:
+                candidates = List.of(
+                        GameType.PICTURE_WORD_WRITING,
+                        GameType.PICTURE4_WORD4_MATCHING,
+                        GameType.SENTENCE_HIDDEN_WORD,
+                        GameType.WORD_TO_SENTENCE
                 );
+                break;
             default:
                 return Collections.emptyList();
         }
+
+        // 2. Query 1 lần: lấy những type trong candidates đã tồn tại cho lessonId
+        List<GameType> existed = gameRepository.findTypesByLessonIdAndTypeIn(lessonId, candidates);
+        Set<GameType> existedSet = new HashSet<>(existed);
+
+        // 3. Lọc offline và trả về tên enum (String)
+        return candidates.stream()
+                .filter(g -> !existedSet.contains(g))
+                .map(Enum::name) // hoặc .toString()
+                .collect(Collectors.toList());
     }
+
 
 }

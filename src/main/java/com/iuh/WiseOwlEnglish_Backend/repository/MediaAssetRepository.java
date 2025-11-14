@@ -1,6 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.repository;
 
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.MediaAssetImageDto;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.MediaAssetForAdminDto;
 import com.iuh.WiseOwlEnglish_Backend.enums.MediaType;
 import com.iuh.WiseOwlEnglish_Backend.model.MediaAsset;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,11 +26,17 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, Long> {
             @Param("sentenceId") Long sentenceId,
             @Param("mediaType") MediaType mediaType
     );
-    @Query("select new com.iuh.WiseOwlEnglish_Backend.dto.respone.MediaAssetImageDto(" +
+    @Query("select new com.iuh.WiseOwlEnglish_Backend.dto.respone.MediaAssetForAdminDto(" +
             " m.id, m.url, m.altText, m.tag) " +
             "from MediaAsset m join m.vocabulary v " +
             "where m.mediaType = :mediaType and v.lessonVocabulary.id = :lessonId")
-    List<MediaAssetImageDto> findImageDtosByLessonId(@Param("mediaType") MediaType mediaType,
-                                                     @Param("lessonId") Long lessonId);
+    List<MediaAssetForAdminDto> findAssetVocabByLessonId(@Param("mediaType") MediaType mediaType,
+                                                         @Param("lessonId") Long lessonId);
+
+    @Query("select m.id as id, m.url as url, m.altText as altText, m.tag as tag " +
+            "from MediaAsset m join m.sentence s " +
+            "where m.mediaType = :mediaType and s.lessonSentence.id = :lessonId")
+    List<MediaAssetForAdminDto> findAssetSentenceBySentenceLessonId(@Param("mediaType") MediaType mediaType,
+                                                                    @Param("lessonId") Long lessonId);
 }
 

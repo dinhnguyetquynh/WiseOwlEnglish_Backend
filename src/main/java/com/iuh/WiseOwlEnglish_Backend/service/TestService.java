@@ -34,6 +34,8 @@ public class TestService {
     private final TestAttemptRepository attemptRepository;
     private final TestAnswerRepository answerRepository;
 
+    private final IncorrectItemLogService incorrectItemLogService;
+
     //ADMIN FUNCTIONALITY
     @Transactional
     public TestRes createTest(TestReq request) {
@@ -265,8 +267,20 @@ public class TestService {
             // Lưu TestAnswer theo loại câu:
             persistAnswer(attempt, q, a, gr, opts);
 
-            if (gr.correct()) { correct++; totalScore += gr.earnedScore(); }
-            else wrong++;
+            if (gr.correct()) {
+                correct++;
+                totalScore += gr.earnedScore();
+            } else {
+                wrong++;
+            }
+            // GỌI LOGIC MỚI (luôn luôn gọi)
+            incorrectItemLogService.logTestOptions(
+                    learner.getId(),
+                    test.getLessonTest().getId(),
+                    q,
+                    opts,
+                    gr.correct() // 👈 Truyền kết quả
+            );
 
 
             QuestionResultRes resultRes = new QuestionResultRes();

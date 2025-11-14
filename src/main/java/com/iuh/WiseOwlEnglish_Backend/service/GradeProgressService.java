@@ -1,20 +1,16 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.GradeProgress;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonOfGradeProgress;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
+import com.iuh.WiseOwlEnglish_Backend.enums.ItemType;
+import com.iuh.WiseOwlEnglish_Backend.enums.TestAttemptStatus;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
-import com.iuh.WiseOwlEnglish_Backend.model.GradeLevel;
-import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
-import com.iuh.WiseOwlEnglish_Backend.model.LessonProgress;
+import com.iuh.WiseOwlEnglish_Backend.model.*;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +22,13 @@ public class GradeProgressService {
     private final GradeLevelRepository gradeLevelRepo; // Thêm repo này
     private final TestAttemptRepository testAttemptRepo; // Thêm repo này
     private final LearnerProfileRepository learnerProfileRepo; // Thêm repo này
+
+    private final TestRepository testRepo;
+    private final VocabularyRepository vocabRepo;
+    private final SentenceRepository sentenceRepo;
+    private final IncorrectItemLogRepository incorrectItemLogRepo;
+
+
 
     @Transactional(readOnly = true)
     public GradeProgress getGradeProgress(int orderIndex, Long learnerId) {
@@ -123,6 +126,97 @@ public class GradeProgressService {
         response.setListLessons(lessonProgressList);
 
         return response;
+    }
+
+    @Transactional(readOnly = true)
+    public LessonProgressDetailRes getLessonProgressDetail(Long learnerId, Long lessonId) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new NotFoundException("Lesson not found"));
+
+        LessonProgressDetailRes res = new LessonProgressDetailRes();
+        res.setLessonId(lessonId);
+        res.setUnitName(lesson.getUnitName());
+        res.setLessonName(lesson.getLessonName());
+
+        res.setTestHistories(getTestHistoryForLesson(learnerId, lessonId));
+        res.setIncorrectVocabularies(getIncorrectVocabularies(learnerId, lessonId));
+        res.setIncorrectSentences(getIncorrectSentences(learnerId, lessonId));
+
+        return res;
+    }
+    // 👇 HÀM HELPER (Giữ nguyên)
+    private List<TestAttemptHistoryRes> getTestHistoryForLesson(Long learnerId, Long lessonId) {
+        List<Test> testsInLesson = testRepo.findByLessonTest_Id(lessonId);
+        List<TestAttemptHistoryRes> histories = new ArrayList<>();
+
+        for (Test test : testsInLesson) {
+            List<TestAttempt> attempts = testAttemptRepo
+                    .findByLearnerProfile_IdAndTest_IdAndStatusOrderByFinishedAtAsc(
+                            learnerId, test.getId(), TestAttemptStatus.FINISHED);
+
+            if (attempts.isEmpty()) continue;
+
+            List<TestAttemptHistoryRes.AttemptScore> scores = attempts.stream()
+                    .map(att -> new TestAttemptHistoryRes.AttemptScore(
+                            att.getId(),
+                            att.getScore(),
+                            att.getFinishedAt()
+                    ))
+                    .toList();
+
+            TestAttemptHistoryRes testHistory = new TestAttemptHistoryRes();
+            testHistory.setTestId(test.getId());
+            testHistory.setTestTitle(test.getTitle());
+            testHistory.setAttempts(scores);
+            histories.add(testHistory);
+        }
+        return histories;
+    }
+
+    // 👇 HÀM HELPER (Logic truy vấn mới)
+    private List<IncorrectItemRes> getIncorrectVocabularies(Long learnerId, Long lessonId) {
+        List<IncorrectItemCountDTO> wrongCounts = incorrectItemLogRepo
+                .findIncorrectItemCounts(learnerId, lessonId, ItemType.VOCAB);
+
+        if (wrongCounts.isEmpty()) return Collections.emptyList();
+
+        List<IncorrectItemCountDTO> top5 = wrongCounts.stream().limit(5).toList();
+        Set<Long> vocabIds = top5.stream().map(IncorrectItemCountDTO::getItemRefId).collect(Collectors.toSet());
+        Map<Long, Long> countMap = top5.stream().collect(Collectors.toMap(IncorrectItemCountDTO::getItemRefId, IncorrectItemCountDTO::getWrongCount));
+
+        List<Vocabulary> vocabs = vocabRepo.findAllById(vocabIds);
+
+        return vocabs.stream()
+                .map(v -> new IncorrectItemRes(
+                        v.getTerm_en(),
+                        v.getTerm_vi(),
+                        countMap.getOrDefault(v.getId(), 0L)
+                ))
+                .sorted(Comparator.comparingLong(IncorrectItemRes::getWrongCount).reversed())
+                .collect(Collectors.toList());
+    }
+
+    // 👇 HÀM HELPER (Logic truy vấn mới)
+    private List<IncorrectItemRes> getIncorrectSentences(Long learnerId, Long lessonId) {
+        List<IncorrectItemCountDTO> wrongCounts = incorrectItemLogRepo
+                .findIncorrectItemCounts(learnerId, lessonId, ItemType.SENTENCE);
+
+        if (wrongCounts.isEmpty()) return Collections.emptyList();
+
+        List<IncorrectItemCountDTO> top5 = wrongCounts.stream().limit(5).toList();
+        Set<Long> sentenceIds = top5.stream().map(IncorrectItemCountDTO::getItemRefId).collect(Collectors.toSet());
+        Map<Long, Long> countMap = top5.stream().collect(Collectors.toMap(IncorrectItemCountDTO::getItemRefId, IncorrectItemCountDTO::getWrongCount));
+
+        List<Sentence> sentences = sentenceRepo.findAllById(sentenceIds);
+
+        return sentences.stream()
+                .map(s -> new IncorrectItemRes(
+                        s.getSentence_en(),
+                        s.getSentence_vi(),
+                        countMap.getOrDefault(s.getId(), 0L)
+                ))
+                .sorted(Comparator.comparingLong(IncorrectItemRes::getWrongCount).reversed())
+                .collect(Collectors.toList());
     }
 
 }

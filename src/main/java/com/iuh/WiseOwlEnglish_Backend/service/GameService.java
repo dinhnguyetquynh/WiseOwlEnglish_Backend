@@ -44,6 +44,7 @@ public class GameService {
     private final LearnerProfileRepository learnerProfileRepository;
     private final ObjectMapper objectMapper;
 
+    private final IncorrectItemLogService incorrectItemLogService;
     //FUNCTION FOR LEARNER
     public List<PictureGuessingGameRes> getListGamePictureGuessing(long lessonId){
         Optional<Long> gameId = gameRepository.findGameIdByTypeAndLessonId(PICTURE_WORD_MATCHING,lessonId);
@@ -381,6 +382,14 @@ public class GameService {
         } else {
             attempt.setWrongCount(attempt.getWrongCount() + 1);
         }
+        // GỌI LOGIC MỚI (luôn luôn gọi)
+        incorrectItemLogService.logGameOptions(
+                profile.getId(),
+                game.getLesson().getId(),
+                question,
+                options,
+                result.isCorrect() // 👈 Truyền kết quả
+        );
 
         // ========== BẮT ĐẦU LOGIC MỚI ==========
         // 5.1. Kiểm tra xem đây có phải là câu hỏi cuối cùng không

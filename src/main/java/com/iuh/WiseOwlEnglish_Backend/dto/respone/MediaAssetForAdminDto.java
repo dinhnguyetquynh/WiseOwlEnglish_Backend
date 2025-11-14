@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class MediaAssetImageDto {
+public class MediaAssetForAdminDto {
     private Long id;
     private String url;
     private String altText;
