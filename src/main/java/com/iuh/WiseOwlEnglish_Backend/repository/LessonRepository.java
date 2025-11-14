@@ -12,4 +12,6 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
     List<Lesson> findByGradeLevel_IdOrderByOrderIndexAsc(Long gradeLevelId);
     @Query("SELECT COUNT(l) FROM Lesson l WHERE l.gradeLevel.orderIndex = :orderIndex")
     long countLessonsByGradeOrderIndex(@Param("orderIndex") int orderIndex);
+
+    List<Lesson> findByGradeLevel_OrderIndex(int orderIndex);
 }

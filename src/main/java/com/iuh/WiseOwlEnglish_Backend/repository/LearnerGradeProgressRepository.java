@@ -21,4 +21,6 @@ public interface LearnerGradeProgressRepository extends JpaRepository<LearnerGra
             @Param("learnerId") Long learnerId,
             @Param("status") ProgressStatus status
     );
+
+    Optional<LearnerGradeProgress> findByLearnerProfile_IdAndGradeLevel_Id(Long learnerProfileId, Long gradeLevelId);
 }

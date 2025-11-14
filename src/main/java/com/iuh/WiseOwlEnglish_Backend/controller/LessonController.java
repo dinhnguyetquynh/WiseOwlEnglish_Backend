@@ -44,5 +44,15 @@ public class LessonController {
         return ResponseEntity.ok(res);
     }
 
+    @GetMapping("/lessons/by-grade-for-profile")
+    public ResponseEntity<LessonByClassRes> listLessonByGradeForProfile(
+            @RequestParam("profileId") Long profileId,
+            @RequestParam("gradeOrderIndex") int gradeOrderIndex,
+            @AuthenticationPrincipal User principal
+    ) {
+        // TODO (khuyến nghị): verify profileId thuộc về principal.getUsername()
+        LessonByClassRes res = lessonService.getLessonsByGradeForProfile(profileId, gradeOrderIndex);
+        return ResponseEntity.ok(res);
+    }
 
 }

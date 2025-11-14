@@ -105,6 +105,10 @@ public class LearnerProfileService {
         // 4) Xác định "lớp khởi tạo"
         GradeLevel initialGrade = resolveInitialGrade(req, grades);
 
+        //thay doi set cho cac lop < lop khoi tao la IN_PROGRESS
+        // Lấy orderIndex của lớp khởi tạo
+        int initialOrderIndex = initialGrade.getOrderIndex();
+
         // 5) Tạo 5 dòng progress
         List<LearnerGradeProgress> progresses = new ArrayList<>(5);
         for (GradeLevel g : grades) {
@@ -112,9 +116,19 @@ public class LearnerProfileService {
             p.setLearnerProfile(lp);
             p.setGradeLevel(g);
 
+            int currentOrderIndex = g.getOrderIndex();
             boolean isInitial = g.getId().equals(initialGrade.getId());
-            p.setStatus(isInitial ? ProgressStatus.IN_PROGRESS : ProgressStatus.LOCKED);
-            p.setPrimary(isInitial? true : false);
+            boolean isAccessible = (currentOrderIndex <= initialOrderIndex);
+
+            if (isAccessible) {
+                p.setStatus(ProgressStatus.IN_PROGRESS);
+                p.setStartedAt(now);
+            } else {
+                p.setStatus(ProgressStatus.LOCKED);
+                p.setStartedAt(null);
+            }
+
+            p.setPrimary(isInitial);
             p.setStartedAt(isInitial ? now : null);
             p.setCompletedAt(null);
 

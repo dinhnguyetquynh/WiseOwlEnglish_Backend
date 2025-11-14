@@ -53,7 +53,7 @@ public class TestQuestion {
 
     private Integer difficulty;         // 1..5
     @Column(name = "max_score")
-    private Integer maxScore;           // điểm tối đa cho câu
+    private Integer maxScore;           // điểm tối đa cho câu, tinh sao cho du 10 diem
     @Column(name = "order_in_test")
     private Integer orderInTest;        // thứ tự trong bài
 

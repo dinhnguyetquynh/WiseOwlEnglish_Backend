@@ -2,11 +2,9 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
 import com.iuh.WiseOwlEnglish_Backend.enums.ProgressStatus;
+import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
 import com.iuh.WiseOwlEnglish_Backend.mapper.LessonMapper;
-import com.iuh.WiseOwlEnglish_Backend.model.Game;
-import com.iuh.WiseOwlEnglish_Backend.model.GradeLevel;
-import com.iuh.WiseOwlEnglish_Backend.model.LearnerProfile;
-import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
+import com.iuh.WiseOwlEnglish_Backend.model.*;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -145,6 +143,80 @@ public class LessonService {
 
 
 
+    /**
+     * LẤY DANH SÁCH BÀI HỌC VÀ TIẾN ĐỘ CỦA HỌC VIÊN CHO MỘT LỚP CỤ THỂ
+     */
+    @Transactional(readOnly = true)
+    public LessonByClassRes getLessonsByGradeForProfile(Long learnerProfileId, int gradeOrderIndex) {
+
+        // 1. Lấy GradeLevel bằng orderIndex
+        GradeLevel g = gradeLevelRepo.findByOrderIndex(gradeOrderIndex)
+                .orElseThrow(() -> new NotFoundException("GradeLevel with orderIndex " + gradeOrderIndex));
+
+        // 2. KIỂM TRA TRẠNG THÁI CỦA KHỐI LỚP (Grade) NÀY
+        LearnerGradeProgress lgp = grogressRepo.findByLearnerProfile_IdAndGradeLevel_Id(learnerProfileId, g.getId())
+                .orElse(null); // Tìm trạng thái chung
+
+        // Mặc định là KHÓA nếu không tìm thấy bản ghi
+        ProgressStatus gradeStatus = (lgp != null) ? lgp.getStatus() : ProgressStatus.LOCKED;
+
+        // 3. Danh sách lesson theo grade
+        List<Lesson> lessons = lessonRepo.findByGradeLevel_IdOrderByOrderIndexAsc(g.getId());
+
+        // 4. Map DTO
+        List<LessonBriefRes> items = new ArrayList<>(lessons.size());
+
+        // 5. LOGIC PHÂN NHÁNH DỰA TRÊN TRẠNG THÁI LỚP
+        if (gradeStatus == ProgressStatus.LOCKED) {
+            // NẾU CẢ LỚP BỊ KHÓA
+            for (Lesson l : lessons) {
+                LessonBriefRes lessonBriefRes = new LessonBriefRes();
+                lessonBriefRes.setId(l.getId());
+                lessonBriefRes.setUnitName(l.getUnitName());
+                lessonBriefRes.setLessonName(l.getLessonName());
+                lessonBriefRes.setOrderIndex(l.getOrderIndex());
+                lessonBriefRes.setPercentComplete(0);     // 0%
+                lessonBriefRes.setStatus("LOCKED");       // Ép trạng thái bài học là LOCKED
+                lessonBriefRes.setMascot(l.getMascot());
+                items.add(lessonBriefRes);
+            }
+        } else {
+            // NẾU LỚP LÀ IN_PROGRESS hoặc COMPLETED (Logic cũ)
+            List<Long> lessonIds = lessons.stream().map(Lesson::getId).toList();
+            Map<Long, Integer> percentMap = lessonProgressRepo
+                    .findByLearnerProfile_IdAndLesson_IdIn(learnerProfileId, lessonIds)
+                    .stream()
+                    .collect(Collectors.toMap(
+                            lp -> lp.getLesson().getId(),
+                            lp -> (int) Math.round(lp.getPercentComplete()),
+                            (a, b) -> a
+                    ));
+
+            for (Lesson l : lessons) {
+                int pct = percentMap.getOrDefault(l.getId(), 0);
+                pct = Math.max(0, Math.min(100, pct));
+                String status = (pct >= 100) ? "COMPLETE" : "ACTIVE";
+                LessonBriefRes lessonBriefRes = new LessonBriefRes();
+                lessonBriefRes.setId(l.getId());
+                lessonBriefRes.setUnitName(l.getUnitName());
+                lessonBriefRes.setLessonName(l.getLessonName());
+                lessonBriefRes.setOrderIndex(l.getOrderIndex());
+                lessonBriefRes.setPercentComplete(pct);
+                lessonBriefRes.setStatus(status); // Status là ACTIVE hoặc COMPLETE
+                lessonBriefRes.setMascot(l.getMascot());
+                items.add(lessonBriefRes);
+            }
+        }
+
+        // 6. Trả về DTO
+        LessonByClassRes lessonRes = new LessonByClassRes();
+        lessonRes.setProfileId(learnerProfileId);
+        lessonRes.setGradeLevelId(g.getId());
+        lessonRes.setGradeName(g.getGradeName());
+        lessonRes.setGradeOrderIndex(g.getOrderIndex());
+        lessonRes.setLessons(items);
+        return lessonRes;
+    }
 
 
 

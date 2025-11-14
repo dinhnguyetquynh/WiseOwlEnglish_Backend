@@ -20,12 +20,23 @@ public interface GameAttemptRepository extends JpaRepository<GameAttempt, Long> 
             AttemptStatus status
     );
 
+
+    /**
+     * Tính tổng điểm thưởng (reward) mà một học viên cụ thể kiếm được
+     * từ tất cả các game trong một khối (GradeLevel)
+     *
+     * @param orderIndex Index của GradeLevel
+     * @param learnerId  ID của LearnerProfile
+     * @return Tổng điểm thưởng (Long)
+     */
     @Query("SELECT COALESCE(SUM(ga.rewardCount), 0) FROM GameAttempt ga " +
             "JOIN ga.game g " +
             "JOIN g.lesson l " +
             "JOIN l.gradeLevel gl " +
-            "WHERE gl.orderIndex = :orderIndex")
-    Long sumRewardCountByGradeOrderIndex(@Param("orderIndex") int orderIndex);
-
+            "WHERE gl.orderIndex = :orderIndex AND ga.learnerProfile.id = :learnerId")
+    Long sumRewardCountByGradeOrderIndexAndLearner(
+            @Param("orderIndex") int orderIndex,
+            @Param("learnerId") Long learnerId
+    );
 
 }
