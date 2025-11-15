@@ -323,7 +323,12 @@ public class GameServiceAdmin {
                     }else {
                         option.setAnswerText(optionReq.getAnswerText());
                     }
-                    option.setSide(Side.valueOf(optionReq.getSide()));
+                    if(option.getContentType().equals(ContentType.IMAGE)){
+                        option.setSide(Side.LEFT);
+                    }else {
+                        option.setSide(Side.RIGHT);
+                    }
+
                     option.setPairKey(optionReq.getPairKey());
                     option.setCorrect(optionReq.isCorrect());
                     option.setPosition(optionReq.getPosition());
