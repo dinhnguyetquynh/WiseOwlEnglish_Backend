@@ -33,7 +33,8 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, Long> {
     List<MediaAssetForAdminDto> findAssetVocabByLessonId(@Param("mediaType") MediaType mediaType,
                                                          @Param("lessonId") Long lessonId);
 
-    @Query("select m.id as id, m.url as url, m.altText as altText, m.tag as tag " +
+    @Query("select new com.iuh.WiseOwlEnglish_Backend.dto.respone.MediaAssetForAdminDto(" +
+            " m.id, m.url, m.altText, m.tag) " +
             "from MediaAsset m join m.sentence s " +
             "where m.mediaType = :mediaType and s.lessonSentence.id = :lessonId")
     List<MediaAssetForAdminDto> findAssetSentenceBySentenceLessonId(@Param("mediaType") MediaType mediaType,
