@@ -6,6 +6,7 @@ import java.util.List;
 
 @Data
 public class DataGameForAdmin {
+    private String title;
     private List<MediaAssetForAdminDto> mediaAssets;
     private List<OptionsRes> options;
 }

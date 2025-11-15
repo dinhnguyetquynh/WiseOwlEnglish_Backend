@@ -6,8 +6,10 @@ import com.iuh.WiseOwlEnglish_Backend.dto.respone.OptionsRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.enums.MediaType;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
+import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
 import com.iuh.WiseOwlEnglish_Backend.model.Sentence;
 import com.iuh.WiseOwlEnglish_Backend.model.Vocabulary;
+import com.iuh.WiseOwlEnglish_Backend.repository.LessonRepository;
 import com.iuh.WiseOwlEnglish_Backend.repository.MediaAssetRepository;
 import com.iuh.WiseOwlEnglish_Backend.repository.SentenceRepository;
 import com.iuh.WiseOwlEnglish_Backend.repository.VocabularyRepository;
@@ -18,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class DataGameService {
     private final MediaAssetRepository mediaAssetRepository;
     private final VocabularyRepository vocabularyRepository;
     private final SentenceRepository sentenceRepository;
+    private final LessonRepository lessonRepository;
 
     public List<MediaAssetForAdminDto> getImgsOfVocabsByLessonId(long lessonId){
         List<MediaAssetForAdminDto> imageDtos =mediaAssetRepository.findAssetVocabByLessonId(MediaType.IMAGE,lessonId);
@@ -96,6 +100,44 @@ public class DataGameService {
     @Transactional(readOnly = true)
     public DataGameForAdmin getDataGameForAdmin(GameType gameType, long lessonId) {
         DataGameForAdmin data = new DataGameForAdmin();
+
+        //trả ve title: UNIT 2 : COLORS / TẠO TRÒ CHƠI “NHÌN HÌNH CHỌN TỪ
+        Lesson lesson = lessonRepository.findById(lessonId).
+                orElseThrow(()->new NotFoundException("Khong tim thay bai hoc"));
+        // an toàn hoá unit/lesson name
+        String unitNumber = Optional.ofNullable(lesson.getUnitName()).map(String::trim).filter(s -> !s.isEmpty()).orElse("UNIT");
+        String unitName = Optional.ofNullable(lesson.getLessonName()).map(String::trim).orElse("");
+
+        // xây title bằng switch — dễ maintain hơn
+        String titleSuffix;
+        switch (gameType) {
+            case PICTURE_WORD_MATCHING:
+                titleSuffix = "TẠO TRÒ CHƠI “NHÌN HÌNH CHỌN TỪ VỰNG”";
+                break;
+            case PICTURE_WORD_WRITING:
+                titleSuffix = "TẠO TRÒ CHƠI “NHÌN HÌNH - VIẾT TỪ VỰNG”";
+                break;
+            case PICTURE4_WORD4_MATCHING:
+                titleSuffix = "TẠO TRÒ CHƠI “NỐI HÌNH VỚI TỪ VỰNG”";
+                break;
+            case SOUND_WORD_MATCHING:
+                titleSuffix = "NGHE PHÁT ÂM CHỌN TỪ VỰNG";
+                break;
+            case PICTURE_SENTENCE_MATCHING:
+                titleSuffix = "NHÌN HÌNH CHỌN CÂU";
+                break;
+            case SENTENCE_HIDDEN_WORD:
+                titleSuffix = "ĐIỀN TỪ CÒN THIẾU TRONG CÂU";
+                break;
+            case WORD_TO_SENTENCE:
+                titleSuffix = "SẮP XẾP TỪ THÀNH CÂU";
+                break;
+            default:
+                titleSuffix = "";
+        }
+
+        String title = unitNumber + (unitName.isEmpty() ? "" : " : " + unitName) + (titleSuffix.isEmpty() ? "" : " / " + titleSuffix);
+        data.setTitle(title);
 
         switch (gameType) {
             case PICTURE_WORD_MATCHING:
