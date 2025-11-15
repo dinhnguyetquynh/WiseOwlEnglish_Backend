@@ -84,12 +84,15 @@ public class GameServiceAdmin {
             Lesson lesson = lessonRepository.findById(req.getLessonId())
                     .orElseThrow(() -> new NotFoundException("Lesson not found: " + req.getLessonId()));
             newGame.setLesson(lesson);
-            MediaAsset correctAudio = mediaAssetRepository.findById(req.getCorrectAudioId())
-                    .orElseThrow(() -> new NotFoundException("Correct sound not found: " + req.getCorrectAudioId()));
+
+            long correctAudioId = 267;
+            MediaAsset correctAudio = mediaAssetRepository.findById(correctAudioId)
+                    .orElseThrow(() -> new NotFoundException("Correct sound not found: " + correctAudioId));
             newGame.setCorrectAudio(correctAudio);
 
-            MediaAsset wrongAudio = mediaAssetRepository.findById(req.getWrongAudioId())
-                    .orElseThrow(() -> new NotFoundException("Wrong sound not found: " + req.getWrongAudioId()));
+            long wrongAudioId = 268;
+            MediaAsset wrongAudio = mediaAssetRepository.findById(wrongAudioId)
+                    .orElseThrow(() -> new NotFoundException("Wrong sound not found: " + wrongAudioId));
             newGame.setWrongAudio(wrongAudio);
             newGame.setCreatedAt(LocalDateTime.now());
             newGame.setUpdatedAt(LocalDateTime.now());
@@ -347,6 +350,8 @@ public class GameServiceAdmin {
             for(GameQuestionReq questionReq : req.getQuestions()){
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
+
+                //img hinh anh
                 question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
                 question.setPromptRefId(questionReq.getPromptRefId());
 

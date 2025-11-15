@@ -21,8 +21,8 @@ public class GameReq {
     @NotNull(message = "Lesson ID không được để trống")
     private Long lessonId;
 
-    private Long correctAudioId;
-    private Long wrongAudioId;
+//    private Long correctAudioId;
+//    private Long wrongAudioId;
 
     @NotNull(message = "Danh sách câu hỏi không được để trống")
     private List<@Valid GameQuestionReq> questions;
