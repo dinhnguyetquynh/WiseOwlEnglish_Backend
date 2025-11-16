@@ -43,7 +43,7 @@ public class TestQuestion {
     // ---- Prompt (stem) chỉ 1 loại/câu ----
     @Enumerated(EnumType.STRING)
     @Column(name = "stem_type", nullable = false, length = 16)
-    private StemType stemType;          // TEXT/VOCAB/SENTENCE/IMAGE/AUDIO
+    private StemType stemType;        ///VOCAB/SENTENCE/IMAGE/AUDIO
 
     @Column(name = "stem_ref_id")
     private Long stemRefId;             // id của entity tương ứng (nếu không phải TEXT)
@@ -63,7 +63,4 @@ public class TestQuestion {
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TestOption> options;
 
-    // Thêm mối quan hệ 1:1 với MediaAsset
-    @OneToOne(mappedBy = "testQuestion", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private MediaAsset mediaAsset;
 }
