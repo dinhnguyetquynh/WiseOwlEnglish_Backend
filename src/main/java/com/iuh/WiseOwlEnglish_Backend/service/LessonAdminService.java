@@ -3,7 +3,10 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.CreateLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonRes;
+import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
+import com.iuh.WiseOwlEnglish_Backend.model.GradeLevel;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
+import com.iuh.WiseOwlEnglish_Backend.repository.GradeLevelRepository;
 import com.iuh.WiseOwlEnglish_Backend.repository.LessonRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LessonAdminService {
     private final LessonRepository lessonRepository;
+    private final GradeLevelRepository gradeLevelRepository;
 
     @Transactional
     public CreateLessonRes createLesson(CreateLessonReq req){
@@ -44,12 +48,16 @@ public class LessonAdminService {
     private Lesson toEntity(CreateLessonReq req){
         Lesson lesson = new Lesson();
         lesson.setUnitName(req.getUnitNumber());
-        lesson.setUnitName(req.getUnitName());
+        lesson.setLessonName(req.getUnitName());
         lesson.setOrderIndex(req.getOrderIndex());
         lesson.setActive(req.isActive());
         lesson.setCreatedAt(LocalDateTime.now());
         lesson.setUpdatedAt(LocalDateTime.now());
         lesson.setMascot(req.getUrlMascot());
+
+        GradeLevel gradeLevel = gradeLevelRepository.findById(req.getGradeLevelId())
+                .orElseThrow(()-> new NotFoundException("Khong tim thay grade level :" + req.getGradeLevelId()));
+        lesson.setGradeLevel(gradeLevel);
         return lesson;
     }
 

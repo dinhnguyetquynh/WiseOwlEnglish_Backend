@@ -1,13 +1,13 @@
 package com.iuh.WiseOwlEnglish_Backend.controller;
 
+import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.CreateLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonRes;
 import com.iuh.WiseOwlEnglish_Backend.service.LessonAdminService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -21,5 +21,11 @@ public class LessonAdminController {
     public ResponseEntity<List<LessonRes>> getListLesson(@PathVariable long gradeId) {
         List<LessonRes> res = adminService.getListLessonByGradeId(gradeId);
         return ResponseEntity.ok(res);
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<CreateLessonRes> create(@RequestBody CreateLessonReq req) {
+        CreateLessonRes created = adminService.createLesson(req);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 }
