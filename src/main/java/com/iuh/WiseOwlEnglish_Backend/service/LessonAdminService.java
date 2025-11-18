@@ -2,15 +2,20 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.CreateLessonRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonRes;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
 import com.iuh.WiseOwlEnglish_Backend.repository.LessonRepository;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
-@Data
+
+@Service
 @RequiredArgsConstructor
 public class LessonAdminService {
     private final LessonRepository lessonRepository;
@@ -47,4 +52,29 @@ public class LessonAdminService {
         lesson.setMascot(req.getUrlMascot());
         return lesson;
     }
+
+    public List<LessonRes> getListLessonByGradeId(long gradeId){
+        List<Lesson> lessonList = lessonRepository.findByGradeLevel_IdOrderByOrderIndexAsc(gradeId);
+        List<LessonRes> lessonResList = new ArrayList<>();
+        for(Lesson lesson:lessonList){
+            LessonRes res = toLessonDTO(lesson);
+            lessonResList.add(res);
+        }
+        return lessonResList;
+
+    }
+
+    public LessonRes toLessonDTO(Lesson lesson){
+        LessonRes lessonRes = new LessonRes();
+        lessonRes.setId(lesson.getId());
+        lessonRes.setOrderIndex(lesson.getOrderIndex());
+        lessonRes.setActive(lesson.isActive());
+        lessonRes.setUnitNumber(lesson.getUnitName());
+        lessonRes.setUnitName(lesson.getLessonName());
+        lessonRes.setUrlMascot(lesson.getMascot());
+        lessonRes.setUpdatedAt(lesson.getUpdatedAt());
+        return lessonRes;
+    }
+
+
 }

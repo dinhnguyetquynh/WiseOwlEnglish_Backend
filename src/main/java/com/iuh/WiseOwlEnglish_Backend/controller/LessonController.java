@@ -18,15 +18,6 @@ public class LessonController {
     private final LessonQueryService service;
     private final LessonService lessonService;
 
-//    @GetMapping("/lessons/by-age")
-//    public ResponseEntity<LessonsByAgeRes> listLessonsByAge(
-//            @RequestParam("profileId") Long profileId,
-//            @AuthenticationPrincipal User principal
-//    ) {
-//        // TODO (khuyến nghị): verify profileId thuộc về principal.getUsername()
-//        LessonsByAgeRes res = service.getLessonsForProfileByAge(profileId);
-//        return ResponseEntity.ok(res);
-//    }
 
     @GetMapping("/lessons/home-page")
     public ResponseEntity<LessonByClassRes> listLessonForHomePage(
