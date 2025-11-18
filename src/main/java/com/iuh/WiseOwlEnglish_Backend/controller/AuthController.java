@@ -94,7 +94,7 @@ public class AuthController {
         claims.put("roles", principal.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList());
         claims.put("email", principal.getUsername()); // tiện debug/giám sát
 
-        String access = jwtService.generateToken(String.valueOf(principal.getId()), claims, Duration.ofMinutes(15));
+        String access = jwtService.generateToken(String.valueOf(principal.getId()), claims, Duration.ofMinutes(120));
         String refresh = jwtService.generateToken(
                 String.valueOf(principal.getId()),
                 Map.of("typ", "refresh"),

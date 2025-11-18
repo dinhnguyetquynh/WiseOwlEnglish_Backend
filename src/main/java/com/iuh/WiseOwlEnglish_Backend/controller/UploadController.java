@@ -40,5 +40,12 @@ public class UploadController {
         return ResponseEntity.ok(Map.of("url", url));
     }
 
+    @PostMapping("/lesson/img-mascot")
+    public ResponseEntity<Map<String, String>> uploadMascotImg(@RequestParam("file") MultipartFile file) {
+        String url = cloudinaryService.uploadImage(file, "foruser/mascot");
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
+
 
 }
