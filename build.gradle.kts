@@ -58,6 +58,17 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-cache
 	implementation("org.springframework.boot:spring-boot-starter-cache:4.0.0-M3")
 
+//	// https://mvnrepository.com/artifact/com.alphacephei/vosk
+//	implementation("com.alphacephei:vosk:0.3.45")
+//	// https://mvnrepository.com/artifact/net.java.dev.jna/jna
+//	implementation("net.java.dev.jna:jna:5.18.1")
+	// https://mvnrepository.com/artifact/org.apache.commons/commons-text
+	implementation("org.apache.commons:commons-text:1.14.0")
+
+	// https://mvnrepository.com/artifact/commons-io/commons-io
+	implementation("commons-io:commons-io:2.21.0")
+
+
 	implementation("io.jsonwebtoken:jjwt-api:0.11.5")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5") // dùng Jackson parse JSON

@@ -5,10 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
@@ -30,4 +27,18 @@ public class UploadController {
         String url = cloudinaryService.uploadImage(file,"foruser/avatar");
         return ResponseEntity.ok(Map.of("url", url));
     }
+
+    @PostMapping("/lesson/audio")
+    public ResponseEntity<Map<String, String>> uploadLessonAudio(@RequestParam("file") MultipartFile file) {
+        String url = cloudinaryService.uploadAudio(file, "foruser/lessonAudio");
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
+    @PostMapping("/lesson/img")
+    public ResponseEntity<Map<String, String>> uploadLessonImg(@RequestParam("file") MultipartFile file) {
+        String url = cloudinaryService.uploadImage(file, "foruser/lessonImg");
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
+
 }
