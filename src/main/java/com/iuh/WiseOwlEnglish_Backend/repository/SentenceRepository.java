@@ -14,4 +14,6 @@ public interface SentenceRepository extends JpaRepository<Sentence, Long> {
     List<Sentence> findByLessonSentence_IdAndIsForLearning(Long lessonId, boolean isForLearning);
 
     long countByLessonSentence_IdAndIsForLearning(Long lessonId, boolean isForLearning);
+
+    List<Sentence> findByLessonSentence_Id(long lessonId);
 }
