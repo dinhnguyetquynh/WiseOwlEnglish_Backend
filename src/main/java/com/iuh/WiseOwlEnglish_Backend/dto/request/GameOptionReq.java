@@ -10,5 +10,4 @@ public class GameOptionReq {
     private boolean correct;
     private String side;
     private String pairKey;
-    private int position;
 }

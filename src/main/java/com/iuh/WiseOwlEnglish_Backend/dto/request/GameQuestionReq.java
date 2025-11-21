@@ -7,8 +7,6 @@ import java.util.List;
 
 @Data
 public class GameQuestionReq {
-    @NotNull(message = "Position không được để trống")
-    private Integer position;
     private String promptType;
     private Long promptRefId;
     private String questionText;

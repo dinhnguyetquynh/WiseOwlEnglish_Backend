@@ -80,6 +80,7 @@ public class GameServiceAdmin {
             newGame.setTitle(req.getTitle());
             newGame.setType(GameType.valueOf(req.getType()));
             newGame.setDifficulty(1);
+            newGame.setActive(req.isActive());
             // java
             Lesson lesson = lessonRepository.findById(req.getLessonId())
                     .orElseThrow(() -> new NotFoundException("Lesson not found: " + req.getLessonId()));

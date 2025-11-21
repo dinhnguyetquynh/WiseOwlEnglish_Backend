@@ -23,4 +23,6 @@ public class GameReq {
 
     @NotNull(message = "Danh sách câu hỏi không được để trống")
     private List<@Valid GameQuestionReq> questions;
+
+    private boolean active;
 }
