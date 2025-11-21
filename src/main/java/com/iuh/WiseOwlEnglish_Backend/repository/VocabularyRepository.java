@@ -27,4 +27,7 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, Long> {
 
     List<Vocabulary> findByLessonVocabulary_Id(Long lessonId);
 
+    @Query("SELECT COALESCE(MAX(v.orderIndex), 0) FROM Vocabulary v WHERE v.lessonVocabulary.id = :lessonId")
+    int findMaxOrderIndexByLessonId(@Param("lessonId") Long lessonId);
+
 }

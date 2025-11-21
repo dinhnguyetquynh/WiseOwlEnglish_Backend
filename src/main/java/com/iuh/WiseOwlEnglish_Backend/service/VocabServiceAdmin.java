@@ -12,8 +12,10 @@ import com.iuh.WiseOwlEnglish_Backend.repository.LessonRepository;
 import com.iuh.WiseOwlEnglish_Backend.repository.MediaAssetRepository;
 import com.iuh.WiseOwlEnglish_Backend.repository.VocabularyRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,6 +27,11 @@ public class VocabServiceAdmin {
     private final VocabularyRepository vocabularyRepository;
     private final LessonRepository lessonRepository;
     private final MediaAssetRepository mediaAssetRepository;
+    private final TransactionTemplate transactionTemplate;
+
+    private static final int MAX_RETRY = 5;
+    private static final long RETRY_SLEEP_MS = 80L;
+
 
     public List<VocabRes> getListVocab(long lessonId){
         List<Vocabulary> vocabularyList = vocabularyRepository.findByLessonVocabulary_Id(lessonId);
@@ -45,86 +52,106 @@ public class VocabServiceAdmin {
         return vocabRes;
     }
 
-    @Transactional
-    public VocabRes createVocab(CreateVocabReq req){
-        Vocabulary createdVocab=null;
-
-        Vocabulary vocabulary = new Vocabulary();
-        vocabulary.setTerm_en(req.getTerm_en());
-        vocabulary.setTerm_vi(req.getTerm_vn());
-        vocabulary.setPhonetic(req.getPhonetic());
-        vocabulary.setOrderIndex(req.getOrderIndex());
-        vocabulary.setPartOfSpeech(req.getPartOfSpeech());
-        vocabulary.setCreatedAt(LocalDateTime.now());
-        vocabulary.setUpdatedAt(LocalDateTime.now());
+    public VocabRes createVocab(CreateVocabReq req) {
+        // Tìm lesson ngoài vòng retry (không cần lặp nhiều lần)
         Lesson lesson = lessonRepository.findById(req.getLessonId())
-                .orElseThrow(()-> new NotFoundException("Khong tim thay lesson: "+req.getLessonId()));
-        vocabulary.setLessonVocabulary(lesson);
-        vocabulary.setForLearning(req.isForLearning());
-        try {
-             createdVocab = vocabularyRepository.save(vocabulary);
-        }catch (Exception exception){
-            throw new BadRequestException("Khong tao duoc vocab");
+                .orElseThrow(() -> new NotFoundException("Khong tim thay lesson: " + req.getLessonId()));
+
+        int attempt = 0;
+        while (true) {
+            attempt++;
+            try {
+                VocabRes result = transactionTemplate.execute(status -> {
+                    // 1) Tính orderIndex tại thời điểm này
+                    int maxOrder = vocabularyRepository.findMaxOrderIndexByLessonId(lesson.getId());
+                    int nextOrder = maxOrder + 1;
+
+                    // 2) Tạo và lưu vocabulary
+                    Vocabulary vocab = new Vocabulary();
+                    vocab.setTerm_en(req.getTerm_en());
+                    vocab.setTerm_vi(req.getTerm_vn());
+                    vocab.setPhonetic(req.getPhonetic());
+                    vocab.setOrderIndex(nextOrder);                 // hệ thống tự gán
+                    vocab.setPartOfSpeech(req.getPartOfSpeech());
+                    vocab.setCreatedAt(LocalDateTime.now());
+                    vocab.setUpdatedAt(LocalDateTime.now());
+                    vocab.setLessonVocabulary(lesson);
+                    vocab.setForLearning(req.isForLearning());
+
+                    Vocabulary created = vocabularyRepository.save(vocab);
+
+                    // 3) Lưu MediaAsset nếu có (lưu đúng entity tương ứng)
+                    if (req.getUrlImg() != null && !req.getUrlImg().isBlank()) {
+                        MediaAsset mediaImg = new MediaAsset();
+                        mediaImg.setUrl(req.getUrlImg());
+                        mediaImg.setMediaType(MediaType.IMAGE);
+                        mediaImg.setAltText(created.getTerm_en());
+                        mediaImg.setStorageProvider("Cloudinary");
+                        mediaImg.setTag("img");
+                        mediaImg.setCreatedAt(LocalDateTime.now());
+                        mediaImg.setUpdatedAt(LocalDateTime.now());
+                        mediaImg.setVocabulary(created);
+                        mediaAssetRepository.save(mediaImg);
+                    }
+
+                    if (req.getUrlAudioNormal() != null && !req.getUrlAudioNormal().isBlank()) {
+                        MediaAsset mediaAudioNormal = new MediaAsset();
+                        mediaAudioNormal.setUrl(req.getUrlAudioNormal());
+                        mediaAudioNormal.setMediaType(MediaType.AUDIO);
+                        mediaAudioNormal.setAltText(created.getTerm_en());
+                        mediaAudioNormal.setDurationSec(req.getDurationSecNormal());
+                        mediaAudioNormal.setStorageProvider("Cloudinary");
+                        mediaAudioNormal.setTag("normal");
+                        mediaAudioNormal.setCreatedAt(LocalDateTime.now());
+                        mediaAudioNormal.setUpdatedAt(LocalDateTime.now());
+                        mediaAudioNormal.setVocabulary(created);
+                        mediaAssetRepository.save(mediaAudioNormal);
+                    }
+
+                    if (req.getUrlAudioSlow() != null && !req.getUrlAudioSlow().isBlank()) {
+                        MediaAsset mediaAudioSlow = new MediaAsset();
+                        mediaAudioSlow.setUrl(req.getUrlAudioSlow());
+                        mediaAudioSlow.setMediaType(MediaType.AUDIO);
+                        mediaAudioSlow.setAltText(created.getTerm_en());
+                        mediaAudioSlow.setDurationSec(req.getDurationSecSlow()); // đúng object
+                        mediaAudioSlow.setStorageProvider("Cloudinary");
+                        mediaAudioSlow.setTag("slow");
+                        mediaAudioSlow.setCreatedAt(LocalDateTime.now());
+                        mediaAudioSlow.setUpdatedAt(LocalDateTime.now());
+                        mediaAudioSlow.setVocabulary(created);
+                        mediaAssetRepository.save(mediaAudioSlow);
+                    }
+
+                    // 4) Build response DTO
+                    VocabRes res = new VocabRes();
+                    res.setId(created.getId());
+                    res.setOrderIndex(created.getOrderIndex());
+                    res.setTerm_en(created.getTerm_en());
+                    res.setPhonetic(created.getPhonetic());
+                    res.setPartOfSpeech(created.getPartOfSpeech());
+                    return res;
+                });
+
+                // Nếu không exception => thành công
+                return result;
+
+            } catch (DataIntegrityViolationException dive) {
+                // Thường là do unique constraint (lesson_id, order_index) bị vi phạm
+                if (attempt >= MAX_RETRY) {
+                    throw new BadRequestException("Khong tao duoc vocab sau " + MAX_RETRY + " lan thu do xung dot orderIndex");
+                }
+                // Sleep ngắn để giảm collision cho lần thử tiếp theo
+                try {
+                    Thread.sleep(RETRY_SLEEP_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during retry sleep", ie);
+                }
+                // tiếp tục vòng lặp để thử lại
+            } catch (RuntimeException ex) {
+                // Lỗi khác: ném ra luôn (ví dụ validation)
+                throw ex;
+            }
         }
-
-        //Media IMG
-        MediaAsset mediaImg = new MediaAsset();
-        mediaImg.setUrl(req.getUrlImg());
-        mediaImg.setMediaType(MediaType.IMAGE);
-        mediaImg.setAltText(createdVocab.getTerm_en());
-        mediaImg.setStorageProvider("Cloudinary");
-        mediaImg.setTag("img");
-        mediaImg.setCreatedAt(LocalDateTime.now());
-        mediaImg.setUpdatedAt(LocalDateTime.now());
-        mediaImg.setVocabulary(createdVocab);
-        try {
-            mediaAssetRepository.save(mediaImg);
-        }catch (Exception exception){
-            throw new BadRequestException("Khong tao duoc media img cho vocab");
-        }
-
-        //Media audio normal
-        MediaAsset mediaAudioNormal = new MediaAsset();
-        mediaAudioNormal.setUrl(req.getUrlAudioNormal());
-        mediaAudioNormal.setMediaType(MediaType.AUDIO);
-        mediaAudioNormal.setAltText(createdVocab.getTerm_en());
-        mediaAudioNormal.setDurationSec(req.getDurationSecNormal());
-        mediaAudioNormal.setStorageProvider("Cloudinary");
-        mediaAudioNormal.setTag("normal");
-        mediaAudioNormal.setCreatedAt(LocalDateTime.now());
-        mediaAudioNormal.setUpdatedAt(LocalDateTime.now());
-        mediaAudioNormal.setVocabulary(createdVocab);
-        try {
-            mediaAssetRepository.save(mediaAudioNormal);
-        }catch (Exception exception){
-            throw new BadRequestException("Khong tao duoc media audio normal cho vocab");
-        }
-
-        //Media audio slow
-        MediaAsset mediaAudioSlow = new MediaAsset();
-        mediaAudioSlow.setUrl(req.getUrlAudioSlow());
-        mediaAudioSlow.setMediaType(MediaType.AUDIO);
-        mediaAudioSlow.setAltText(createdVocab.getTerm_en());
-        mediaAudioNormal.setDurationSec(req.getDurationSecSlow());
-        mediaAudioSlow.setStorageProvider("Cloudinary");
-        mediaAudioSlow.setTag("slow");
-        mediaAudioSlow.setCreatedAt(LocalDateTime.now());
-        mediaAudioSlow.setUpdatedAt(LocalDateTime.now());
-        mediaAudioSlow.setVocabulary(createdVocab);
-        try {
-            mediaAssetRepository.save(mediaImg);
-        }catch (Exception exception){
-            throw new BadRequestException("Khong tao duoc media img cho vocab");
-        }
-
-        //map vocab to dto
-        VocabRes res = new VocabRes();
-        res.setId(createdVocab.getId());
-        res.setOrderIndex(createdVocab.getOrderIndex());
-        res.setTerm_en(createdVocab.getTerm_en());
-        res.setPhonetic(createdVocab.getPhonetic());
-        res.setPartOfSpeech(createdVocab.getPartOfSpeech());
-        return res;
-
     }
 }

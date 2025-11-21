@@ -9,7 +9,6 @@ public class CreateVocabReq {
     private String term_vn;
     private String phonetic;
     private String partOfSpeech;
-    private int orderIndex;
     private long lessonId;
     @JsonProperty("isForLearning")
     private boolean isForLearning;

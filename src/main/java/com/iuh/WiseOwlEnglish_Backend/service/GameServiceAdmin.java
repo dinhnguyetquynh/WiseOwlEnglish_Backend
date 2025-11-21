@@ -116,10 +116,13 @@ public class GameServiceAdmin {
             Game savedGame = createNewGame(req);
 
             //create ListQuestion
+            //tự động đánh position cho GameQuestion (bắt đầu từ 1)
+            int questionIndex = 0;
             for(var question:req.getQuestions()){
+                questionIndex++;
                 GameQuestion gameQuestion = new GameQuestion();
                 gameQuestion.setGame(savedGame);
-                gameQuestion.setPosition(question.getPosition());
+                gameQuestion.setPosition(questionIndex);
                 //img :
                 gameQuestion.setPromptType(PromptType.valueOf(question.getPromptType()));
                 gameQuestion.setPromptRefId(question.getPromptRefId());
@@ -129,17 +132,20 @@ public class GameServiceAdmin {
                 gameQuestion.setUpdatedAt(LocalDateTime.now());
 
                 List<GameOption> listOptions = new ArrayList<>();
-                for(var option : question.getOptionReqs()){
-                    GameOption opt = new GameOption();
-                    opt.setGameQuestion(gameQuestion);
-                    opt.setContentType(ContentType.valueOf(option.getContentType()));
-                    opt.setContentRefId(option.getContentRefId());
-                    opt.setCorrect(option.isCorrect());
-                    opt.setPosition(option.getPosition());
-                    opt.setCreatedAt(LocalDateTime.now());
-                    opt.setUpdatedAt(LocalDateTime.now());
-                    listOptions.add(opt);
-
+                if (question.getOptionReqs() != null) {
+                    int optionIndex = 0;
+                    for (var option : question.getOptionReqs()) {
+                        optionIndex++;
+                        GameOption opt = new GameOption();
+                        opt.setGameQuestion(gameQuestion);
+                        opt.setContentType(ContentType.valueOf(option.getContentType()));
+                        opt.setContentRefId(option.getContentRefId());
+                        opt.setCorrect(option.isCorrect());
+                        opt.setPosition(optionIndex); // <-- set tự động, bỏ qua giá trị client
+                        opt.setCreatedAt(LocalDateTime.now());
+                        opt.setUpdatedAt(LocalDateTime.now());
+                        listOptions.add(opt);
+                    }
                 }
                 gameQuestion.setOptions(listOptions);
                 GameQuestion savedQuestion = gameQuestionRepository.save(gameQuestion);
@@ -159,11 +165,12 @@ public class GameServiceAdmin {
             //CHECK
 
             Game savedGame = createNewGame(req);
-
+            int questionIndex = 0;
             for(GameQuestionReq questionReq : req.getQuestions()){
+                questionIndex++;
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
-                question.setPosition(questionReq.getPosition());
+                question.setPosition(questionIndex);
                 //id sound
                 question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
                 question.setPromptRefId(questionReq.getPromptRefId());
@@ -174,7 +181,9 @@ public class GameServiceAdmin {
 
                 //create and set list options for question
                 List<GameOption> gameOptionList = new ArrayList<>();
+                int optionIndex = 0;
                 for(GameOptionReq optionReq:questionReq.getOptionReqs()){
+                    optionIndex++;
                     GameOption option = new GameOption();
                     option.setGameQuestion(question);
                     //id vocab
@@ -182,7 +191,7 @@ public class GameServiceAdmin {
                     option.setContentRefId(optionReq.getContentRefId());
 
                     option.setCorrect(optionReq.isCorrect());
-                    option.setPosition(optionReq.getPosition());
+                    option.setPosition(optionIndex);
                     option.setCreatedAt(LocalDateTime.now());
                     option.setUpdatedAt(LocalDateTime.now());
 
@@ -204,33 +213,34 @@ public class GameServiceAdmin {
     public GameRes createPictureSentenceMatching(GameReq req){
         try {
             Game savedGame = createNewGame(req);
-
+            int questionIndex = 0;
             for(GameQuestionReq questionReq : req.getQuestions()){
+                questionIndex++;
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
-                question.setPosition(questionReq.getPosition());
-
+                question.setPosition(questionIndex);
                 //id img
                 question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
                 question.setPromptRefId(questionReq.getPromptRefId());
 
-                question.setQuestionText(questionReq.getQuestionText());
+//                question.setQuestionText(questionReq.getQuestionText());
                 question.setRewardCore(questionReq.getRewardCore());
                 question.setCreatedAt(LocalDateTime.now());
                 question.setUpdatedAt(LocalDateTime.now());
 
                 //create and set list options for question
                 List<GameOption> gameOptionList = new ArrayList<>();
+                int optionIndex = 0;
                 for(GameOptionReq optionReq:questionReq.getOptionReqs()){
+                    optionIndex++;
                     GameOption option = new GameOption();
                     option.setGameQuestion(question);
 
                     //id sentence
                     option.setContentType(ContentType.valueOf(optionReq.getContentType()));
                     option.setContentRefId(optionReq.getContentRefId());
-
                     option.setCorrect(optionReq.isCorrect());
-                    option.setPosition(optionReq.getPosition());
+                    option.setPosition(optionIndex);
                     option.setCreatedAt(LocalDateTime.now());
                     option.setUpdatedAt(LocalDateTime.now());
                     gameOptionList.add((option));
@@ -250,11 +260,12 @@ public class GameServiceAdmin {
     public GameRes createPictureWordWriting(GameReq req){
         try {
             Game savedGame = createNewGame(req);
-
+            int questionIndex = 0;
             for(GameQuestionReq questionReq : req.getQuestions()){
+                questionIndex++;
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
-                question.setPosition(questionReq.getPosition());
+                question.setPosition(questionIndex);
                 //id img
                 question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
                 question.setPromptRefId(questionReq.getPromptRefId());
@@ -266,7 +277,9 @@ public class GameServiceAdmin {
 
                 //create and set list options for question
                 List<GameOption> gameOptionList = new ArrayList<>();
+                int optionIndex = 0;
                 for(GameOptionReq optionReq:questionReq.getOptionReqs()){
+                    optionIndex++;
                     GameOption option = new GameOption();
                     option.setGameQuestion(question);
 
@@ -275,7 +288,7 @@ public class GameServiceAdmin {
                     option.setContentRefId(optionReq.getContentRefId());
 
                     option.setCorrect(optionReq.isCorrect());
-                    option.setPosition(optionReq.getPosition());
+                    option.setPosition(optionIndex);
                     option.setCreatedAt(LocalDateTime.now());
                     option.setUpdatedAt(LocalDateTime.now());
                     gameOptionList.add((option));
@@ -294,17 +307,21 @@ public class GameServiceAdmin {
         try {
             Game savedGame = createNewGame(req);
 
+            int questionIndex = 0;
             for(GameQuestionReq questionReq : req.getQuestions()){
+                questionIndex++;
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
-                question.setPosition(questionReq.getPosition());
+                question.setPosition(questionIndex);
                 question.setRewardCore(questionReq.getRewardCore());
                 question.setCreatedAt(LocalDateTime.now());
                 question.setUpdatedAt(LocalDateTime.now());
 
                 //game có 8 options : moi option deu co id cua media hoac vocab
                 List<GameOption> gameOptionList = new ArrayList<>();
+                int optionIndex = 0;
                 for(GameOptionReq optionReq:questionReq.getOptionReqs()){
+                    optionIndex++;
                     GameOption option = new GameOption();
                     option.setGameQuestion(question);
                     if(optionReq.getContentType()==null){
@@ -318,11 +335,11 @@ public class GameServiceAdmin {
                     }else {
                         option.setContentRefId(optionReq.getContentRefId());
                     }
-                    if(optionReq.getAnswerText()==null){
-                        option.setAnswerText(null);
-                    }else {
-                        option.setAnswerText(optionReq.getAnswerText());
-                    }
+//                    if(optionReq.getAnswerText()==null){
+//                        option.setAnswerText(null);
+//                    }else {
+//                        option.setAnswerText(optionReq.getAnswerText());
+//                    }
                     if(option.getContentType().equals(ContentType.IMAGE)){
                         option.setSide(Side.LEFT);
                     }else {
@@ -331,7 +348,7 @@ public class GameServiceAdmin {
 
                     option.setPairKey(optionReq.getPairKey());
                     option.setCorrect(optionReq.isCorrect());
-                    option.setPosition(optionReq.getPosition());
+                    option.setPosition(optionIndex);
                     option.setCreatedAt(LocalDateTime.now());
                     option.setUpdatedAt(LocalDateTime.now());
                     gameOptionList.add((option));
@@ -351,8 +368,9 @@ public class GameServiceAdmin {
             Game savedGame = createNewGame(req);
 
             // 3.3) Tạo câu đã che từ: replace lần đầu bằng "___"
-
+            int questionIndex = 0;
             for(GameQuestionReq questionReq : req.getQuestions()){
+                questionIndex++;
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
 
@@ -368,7 +386,7 @@ public class GameServiceAdmin {
                 String masked = maskFirstOccurrence(full, hidden, "___");
                 question.setQuestionText(masked);
                 question.setHiddenWord(questionReq.getHiddenWord());
-                question.setPosition(questionReq.getPosition());
+                question.setPosition(questionIndex);
                 question.setRewardCore(questionReq.getRewardCore());
                 question.setCreatedAt(LocalDateTime.now());
                 question.setUpdatedAt(LocalDateTime.now());
@@ -398,12 +416,14 @@ public class GameServiceAdmin {
         try {
             Game savedGame = createNewGame(req);
 
+            int questionIndex = 0;
             for (GameQuestionReq questionReq : req.getQuestions()) {
+                questionIndex++;
                 GameQuestion question = new GameQuestion();
                 question.setGame(savedGame);
                 question.setPromptType(PromptType.valueOf(questionReq.getPromptType()));
                 question.setPromptRefId(questionReq.getPromptRefId());
-                question.setPosition(questionReq.getPosition());
+                question.setPosition(questionIndex);
                 question.setRewardCore(questionReq.getRewardCore());
                 question.setCreatedAt(LocalDateTime.now());
                 question.setUpdatedAt(LocalDateTime.now());
