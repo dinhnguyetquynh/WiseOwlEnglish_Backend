@@ -3,6 +3,8 @@ package com.iuh.WiseOwlEnglish_Backend.repository;
 import com.iuh.WiseOwlEnglish_Backend.model.Sentence;
 import com.iuh.WiseOwlEnglish_Backend.model.Vocabulary;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,4 +18,7 @@ public interface SentenceRepository extends JpaRepository<Sentence, Long> {
     long countByLessonSentence_IdAndIsForLearning(Long lessonId, boolean isForLearning);
 
     List<Sentence> findByLessonSentence_Id(long lessonId);
+
+    @Query("SELECT COALESCE(MAX(s.orderIndex), 0) FROM Sentence s WHERE s.lessonSentence.id = :lessonId")
+    int findMaxOrderIndexByLessonId(@Param("lessonId") Long lessonId);
 }

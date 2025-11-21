@@ -7,7 +7,6 @@ import lombok.Data;
 public class CreateSentenceReq {
     private String sen_en;
     private String sen_vn;
-    private int orderIndex;
     private long lessonId;
     @JsonProperty("isForLearning")
     private boolean isForLearning;

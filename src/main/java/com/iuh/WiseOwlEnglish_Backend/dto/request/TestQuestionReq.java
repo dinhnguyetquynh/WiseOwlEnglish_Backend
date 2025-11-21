@@ -10,8 +10,6 @@ public class TestQuestionReq {
     private String stemType;
     private Long stemRefId;
     private String stemText;
-    private Integer difficulty;
     private Integer maxScore;
-    private Integer orderInTest;
     List<TestOptionReq> options;
 }

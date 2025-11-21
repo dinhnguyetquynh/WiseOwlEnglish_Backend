@@ -3,11 +3,20 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateSentenceReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.SentenceAdminRes;
+import com.iuh.WiseOwlEnglish_Backend.enums.MediaType;
+import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
+import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
+import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
+import com.iuh.WiseOwlEnglish_Backend.model.MediaAsset;
 import com.iuh.WiseOwlEnglish_Backend.model.Sentence;
+import com.iuh.WiseOwlEnglish_Backend.repository.LessonRepository;
+import com.iuh.WiseOwlEnglish_Backend.repository.MediaAssetRepository;
 import com.iuh.WiseOwlEnglish_Backend.repository.SentenceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,10 +25,17 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class SentenceAdminService {
-    private final SentenceRepository repository;
+    private final SentenceRepository sentenceRepository;
+    private final LessonRepository lessonRepository;
+    private final MediaAssetRepository mediaAssetRepository;
+
+    private final TransactionTemplate transactionTemplate;
+
+    private static final int MAX_RETRY = 5;        // tăng retry nếu muốn
+    private static final long RETRY_SLEEP_MS = 80; // backoff ngắn
 
     public List<SentenceAdminRes> getListSentence(long lessonId){
-        List<Sentence> sentenceList = repository.findByLessonSentence_Id(lessonId);
+        List<Sentence> sentenceList = sentenceRepository.findByLessonSentence_Id(lessonId);
 
         List<SentenceAdminRes> sentenceResList = new ArrayList<>();
         for(Sentence sentence: sentenceList){
@@ -37,79 +53,105 @@ public class SentenceAdminService {
         return res;
     }
 
-//    @Transactional
-//    public SentenceAdminRes createSentence(CreateSentenceReq req){
-//        Sentence createdSen=null;
-//
-//        Sentence sentence = new Sentence();
-//        sentence.setOrderIndex(req.getOrderIndex());
-//        sentence.setSentence_en(req.getSen_en());
-//        sentence.setSentence_vi(req.getSen_vn());
-//        sentence.setCreatedAt(LocalDateTime.now());
-//        sentence.setUpdatedAt();
-//        try {
-//            createdVocab = vocabularyRepository.save(vocabulary);
-//        }catch (Exception exception){
-//            throw new BadRequestException("Khong tao duoc vocab");
-//        }
-//
-//        //Media IMG
-//        MediaAsset mediaImg = new MediaAsset();
-//        mediaImg.setUrl(req.getUrlImg());
-//        mediaImg.setMediaType(MediaType.IMAGE);
-//        mediaImg.setAltText(createdVocab.getTerm_en());
-//        mediaImg.setStorageProvider("Cloudinary");
-//        mediaImg.setTag("img");
-//        mediaImg.setCreatedAt(LocalDateTime.now());
-//        mediaImg.setUpdatedAt(LocalDateTime.now());
-//        mediaImg.setVocabulary(createdVocab);
-//        try {
-//            mediaAssetRepository.save(mediaImg);
-//        }catch (Exception exception){
-//            throw new BadRequestException("Khong tao duoc media img cho vocab");
-//        }
-//
-//        //Media audio normal
-//        MediaAsset mediaAudioNormal = new MediaAsset();
-//        mediaAudioNormal.setUrl(req.getUrlAudioNormal());
-//        mediaAudioNormal.setMediaType(MediaType.AUDIO);
-//        mediaAudioNormal.setAltText(createdVocab.getTerm_en());
-//        mediaAudioNormal.setDurationSec(req.getDurationSecNormal());
-//        mediaAudioNormal.setStorageProvider("Cloudinary");
-//        mediaAudioNormal.setTag("normal");
-//        mediaAudioNormal.setCreatedAt(LocalDateTime.now());
-//        mediaAudioNormal.setUpdatedAt(LocalDateTime.now());
-//        mediaAudioNormal.setVocabulary(createdVocab);
-//        try {
-//            mediaAssetRepository.save(mediaAudioNormal);
-//        }catch (Exception exception){
-//            throw new BadRequestException("Khong tao duoc media audio normal cho vocab");
-//        }
-//
-//        //Media audio slow
-//        MediaAsset mediaAudioSlow = new MediaAsset();
-//        mediaAudioSlow.setUrl(req.getUrlAudioSlow());
-//        mediaAudioSlow.setMediaType(MediaType.AUDIO);
-//        mediaAudioSlow.setAltText(createdVocab.getTerm_en());
-//        mediaAudioNormal.setDurationSec(req.getDurationSecSlow());
-//        mediaAudioSlow.setStorageProvider("Cloudinary");
-//        mediaAudioSlow.setTag("slow");
-//        mediaAudioSlow.setCreatedAt(LocalDateTime.now());
-//        mediaAudioSlow.setUpdatedAt(LocalDateTime.now());
-//        mediaAudioSlow.setVocabulary(createdVocab);
-//        try {
-//            mediaAssetRepository.save(mediaImg);
-//        }catch (Exception exception){
-//            throw new BadRequestException("Khong tao duoc media img cho vocab");
-//        }
-//
-//        //map vocab to dto
-//        VocabRes res = new VocabRes();
-//        res.setId(createdVocab.getId());
-//        res.setOrderIndex(createdVocab.getOrderIndex());
-//        res.setTerm_en(createdVocab.getTerm_en());
-//        res.setPhonetic(createdVocab.getPhonetic());
-//        res.setPartOfSpeech(createdVocab.getPartOfSpeech());
-//        return res;
-//    }
+
+    /**
+     * Tạo Sentence: mỗi attempt sẽ chạy trong 1 transaction riêng (TransactionTemplate).
+     * Nếu có lỗi DataIntegrityViolationException (ví dụ trùng unique orderIndex), sẽ retry.
+     */
+    public SentenceAdminRes createSentence(CreateSentenceReq req) {
+        Lesson lesson = lessonRepository.findById(req.getLessonId())
+                .orElseThrow(() -> new NotFoundException("Khong tim thay lesson: " + req.getLessonId()));
+
+        int attempt = 0;
+        while (true) {
+            attempt++;
+            try {
+                // chạy một attempt trong transaction riêng
+                SentenceAdminRes res = transactionTemplate.execute(status -> {
+                    // 1) Tạo Sentence và gán orderIndex = max + 1 (tính tại thời điểm này)
+                    int maxOrder = sentenceRepository.findMaxOrderIndexByLessonId(lesson.getId());
+                    Sentence sentence = new Sentence();
+                    sentence.setOrderIndex(maxOrder + 1);
+                    sentence.setSentence_en(req.getSen_en());
+                    sentence.setSentence_vi(req.getSen_vn());
+                    sentence.setCreatedAt(LocalDateTime.now());
+                    sentence.setUpdatedAt(LocalDateTime.now());
+                    sentence.setLessonSentence(lesson);
+                    sentence.setForLearning(req.isForLearning());
+
+                    Sentence created = sentenceRepository.save(sentence); // persist sentence
+
+                    // 2) Lưu các MediaAsset (nếu có) — lưu đúng object + set sentence
+                    if (req.getUrlImg() != null && !req.getUrlImg().isBlank()) {
+                        MediaAsset mediaImg = new MediaAsset();
+                        mediaImg.setUrl(req.getUrlImg());
+                        mediaImg.setMediaType(MediaType.IMAGE);
+                        mediaImg.setAltText(created.getSentence_en());
+                        mediaImg.setStorageProvider("Cloudinary");
+                        mediaImg.setTag("img");
+                        mediaImg.setCreatedAt(LocalDateTime.now());
+                        mediaImg.setUpdatedAt(LocalDateTime.now());
+                        mediaImg.setSentence(created);
+                        mediaAssetRepository.save(mediaImg);
+                    }
+
+                    if (req.getUrlAudioNormal() != null && !req.getUrlAudioNormal().isBlank()) {
+                        MediaAsset mediaAudioNormal = new MediaAsset();
+                        mediaAudioNormal.setUrl(req.getUrlAudioNormal());
+                        mediaAudioNormal.setMediaType(MediaType.AUDIO);
+                        mediaAudioNormal.setAltText(created.getSentence_en());
+                        mediaAudioNormal.setDurationSec(req.getDurationSecNormal());
+                        mediaAudioNormal.setStorageProvider("Cloudinary");
+                        mediaAudioNormal.setTag("normal");
+                        mediaAudioNormal.setCreatedAt(LocalDateTime.now());
+                        mediaAudioNormal.setUpdatedAt(LocalDateTime.now());
+                        mediaAudioNormal.setSentence(created);
+                        mediaAssetRepository.save(mediaAudioNormal);
+                    }
+
+                    if (req.getUrlAudioSlow() != null && !req.getUrlAudioSlow().isBlank()) {
+                        MediaAsset mediaAudioSlow = new MediaAsset();
+                        mediaAudioSlow.setUrl(req.getUrlAudioSlow());
+                        mediaAudioSlow.setMediaType(MediaType.AUDIO);
+                        mediaAudioSlow.setAltText(created.getSentence_en());
+                        mediaAudioSlow.setDurationSec(req.getDurationSecSlow());
+                        mediaAudioSlow.setStorageProvider("Cloudinary");
+                        mediaAudioSlow.setTag("slow");
+                        mediaAudioSlow.setCreatedAt(LocalDateTime.now());
+                        mediaAudioSlow.setUpdatedAt(LocalDateTime.now());
+                        mediaAudioSlow.setSentence(created);
+                        mediaAssetRepository.save(mediaAudioSlow);
+                    }
+
+                    // 3) Build response DTO
+                    SentenceAdminRes resLocal = new SentenceAdminRes();
+                    resLocal.setId(created.getId());
+                    resLocal.setOrderIndex(created.getOrderIndex());
+                    resLocal.setSen_en(created.getSentence_en());
+                    return resLocal;
+                });
+
+                // nếu transactionTemplate.execute trả về res (không bị exception) => thành công
+                return res;
+
+            } catch (DataIntegrityViolationException dive) {
+                // Thường do unique constraint (lesson_id, order_index) bị vi phạm => retry
+                if (attempt >= MAX_RETRY) {
+                    throw new BadRequestException("Khong tao duoc sentence sau " + MAX_RETRY + " lan thu do xung dot orderIndex");
+                }
+                // backoff ngắn để giảm khả năng collision ở lần retry tiếp theo
+                try {
+                    Thread.sleep(RETRY_SLEEP_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during retry sleep", ie);
+                }
+                // tiếp tục vòng lặp để thử lại
+            } catch (RuntimeException ex) {
+                // Lỗi khác (ví dụ dữ liệu thiếu, validation...) -> ném ra luôn
+                throw ex;
+            }
+        }
+    }
+
 }

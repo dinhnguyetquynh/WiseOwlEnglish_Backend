@@ -10,7 +10,4 @@ public class TestOptionReq {
     private boolean correct;             // cho trắc nghiệm/true-false
     private String side;                   // LEFT/RIGHT
     private String pairKey;              // mã ghép cặp
-    private Integer order;               // thứ tự hiển thị
-
-
 }

@@ -79,7 +79,7 @@ public class GameServiceAdmin {
             Game newGame = new Game();
             newGame.setTitle(req.getTitle());
             newGame.setType(GameType.valueOf(req.getType()));
-            newGame.setDifficulty(req.getDifficulty());
+            newGame.setDifficulty(1);
             // java
             Lesson lesson = lessonRepository.findById(req.getLessonId())
                     .orElseThrow(() -> new NotFoundException("Lesson not found: " + req.getLessonId()));

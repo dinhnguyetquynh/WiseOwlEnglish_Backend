@@ -14,4 +14,8 @@ public interface TestQuestionRepository extends JpaRepository<TestQuestion, Long
     List<TestQuestion> findByTestIdOrderByOrderInTest(@Param("testId") Long testId);
     @Query("SELECT COUNT(tq) FROM TestQuestion tq WHERE tq.test.lessonTest.id = :lessonId")
     long countByLessonId(@Param("lessonId") Long lessonId);
+
+    @Query("SELECT COALESCE(MAX(q.orderInTest), 0) FROM TestQuestion q WHERE q.test.id = :testId")
+    int findMaxOrderInTestByTestId(@Param("testId") Long testId);
+
 }

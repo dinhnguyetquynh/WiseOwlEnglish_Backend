@@ -13,7 +13,9 @@ import com.iuh.WiseOwlEnglish_Backend.model.*;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -36,69 +38,106 @@ public class TestService {
 
     private final IncorrectItemLogService incorrectItemLogService;
 
+    private final TransactionTemplate transactionTemplate;
+
+    private static final int MAX_RETRY = 3;
+    private static final long RETRY_SLEEP_MS = 50L;
+
     //ADMIN FUNCTIONALITY
-    @Transactional
     public TestRes createTest(TestReq request) {
-        Test test = new Test();
-        Lesson lesson = lessonRepository.findById(request.getLessonId())
-                .orElseThrow(() -> new RuntimeException("Lesson not found"));
-        test.setLessonTest(lesson);
-        test.setActive(request.getActive());
-        test.setTitle(request.getTitle());
-        test.setTestType(TestType.valueOf(request.getType()));
-        test.setDescription(request.getDescription());
-        test.setDurationMin(request.getDurationMin());
-        test.setCreatedAt(LocalDateTime.now());
-        test.setUpdatedAt(LocalDateTime.now());
+        int attempt = 0;
+        while (true) {
+            attempt++;
+            try {
+                // each attempt runs inside its own transaction
+                return transactionTemplate.execute(status -> {
+                    // --- create Test ---
+                    Test test = new Test();
+                    Lesson lesson = lessonRepository.findById(request.getLessonId())
+                            .orElseThrow(() -> new RuntimeException("Lesson not found"));
+                    test.setLessonTest(lesson);
+                    test.setActive(request.getActive());
+                    test.setTitle(request.getTitle());
+                    test.setTestType(TestType.valueOf(request.getType()));
+                    test.setDescription(request.getDescription());
+                    test.setDurationMin(request.getDurationMin());
+                    test.setCreatedAt(LocalDateTime.now());
+                    test.setUpdatedAt(LocalDateTime.now());
 
-        Test savedTest = testRepository.save(test); // ✅ test có ID rồi
+                    Test savedTest = testRepository.save(test); // persisted and has id
 
-        for (var qReq : request.getQuestions()) {
-            TestQuestion question = new TestQuestion();
-            question.setTest(savedTest);
-            question.setQuestionType(TestQuestionType.valueOf(qReq.getQuestionType()));
-            question.setStemType(StemType.valueOf(qReq.getStemType()));
-            question.setStemRefId(qReq.getStemRefId());
-            question.setStemText(qReq.getStemText());
-            question.setDifficulty(qReq.getDifficulty());
-            question.setMaxScore(qReq.getMaxScore());
-            question.setOrderInTest(qReq.getOrderInTest());
-            question.setCreatedAt(LocalDateTime.now());
-            question.setUpdatedAt(LocalDateTime.now());
+                    // --- determine starting order for questions (max existing order) ---
+                    int maxQuestionOrder = testQuestionRepository.findMaxOrderInTestByTestId(savedTest.getId());
+                    int nextQuestionOrder = maxQuestionOrder + 1;
 
-            List<TestOption> opts = new ArrayList<>();
-            for (var oReq : qReq.getOptions()) {
-                TestOption option = new TestOption();
-                option.setQuestion(question);                      // set side owning
-                option.setContentType(ContentType.valueOf(oReq.getContentType()));
-                option.setContentRefId(oReq.getContentRefId());
-                option.setText(oReq.getText());
-                option.setCorrect(oReq.isCorrect());
-                option.setOrder(oReq.getOrder());
-                if (oReq.getSide() != null) {
-                    option.setSide(Side.valueOf(oReq.getSide()));  // chỉ set khi không null
+                    for (var qReq : request.getQuestions()) {
+                        TestQuestion question = new TestQuestion();
+                        question.setTest(savedTest);
+
+                        // System assigns orderInTest (no input from user)
+                        question.setOrderInTest(nextQuestionOrder++);
+                        question.setQuestionType(TestQuestionType.valueOf(qReq.getQuestionType()));
+                        question.setStemType(StemType.valueOf(qReq.getStemType()));
+                        question.setStemRefId(qReq.getStemRefId());
+                        question.setStemText(qReq.getStemText());
+                        question.setDifficulty(1);
+                        question.setMaxScore(qReq.getMaxScore());
+                        question.setCreatedAt(LocalDateTime.now());
+                        question.setUpdatedAt(LocalDateTime.now());
+
+                        // Options: assign orders starting from 1 for each new question
+                        List<TestOption> opts = new ArrayList<>();
+                        int optionOrder = 1;
+                        for (var oReq : qReq.getOptions()) {
+                            TestOption option = new TestOption();
+                            option.setQuestion(question);
+                            option.setContentType(ContentType.valueOf(oReq.getContentType()));
+                            option.setContentRefId(oReq.getContentRefId());
+                            option.setText(oReq.getText());
+                            option.setCorrect(oReq.isCorrect());
+                            option.setOrder(optionOrder++);
+                            if (oReq.getSide() != null) {
+                                option.setSide(Side.valueOf(oReq.getSide()));
+                            }
+                            option.setPairKey(oReq.getPairKey());
+                            option.setCreatedAt(LocalDateTime.now());
+                            option.setUpdatedAt(LocalDateTime.now());
+                            opts.add(option);
+                        }
+                        question.setOptions(opts);
+
+                        // Save question (cascade will save options if configured)
+                        testQuestionRepository.save(question);
+                    }
+
+                    // Build response DTO
+                    TestRes res = new TestRes();
+                    res.setId(savedTest.getId());
+                    res.setLessonId(savedTest.getLessonTest().getId());
+                    res.setActive(savedTest.getActive());
+                    res.setTitle(savedTest.getTitle());
+                    res.setType(savedTest.getTestType().toString());
+                    res.setDescription(savedTest.getDescription());
+                    res.setDurationMin(savedTest.getDurationMin());
+                    return res;
+                });
+            } catch (DataIntegrityViolationException dive) {
+                // Likely a unique constraint violation on (test_id, orderInTest)
+                if (attempt >= MAX_RETRY) {
+                    throw new BadRequestException("Khong tao duoc test question (conflict orderIndex) sau " + MAX_RETRY + " lan thu.");
                 }
-                option.setPairKey(oReq.getPairKey());
-                option.setCorrectOrder(oReq.getOrder());
-                option.setCreatedAt(LocalDateTime.now());
-                option.setUpdatedAt(LocalDateTime.now());
-                opts.add(option);
+                // short backoff to reduce collision chance
+                try {
+                    Thread.sleep(RETRY_SLEEP_MS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                // then retry
+            } catch (Exception exception) {
+                // lỗi khác -> ném BadRequest
+                throw new BadRequestException("Khong tao duoc test: " + exception.getMessage());
             }
-            question.setOptions(opts);
-
-            testQuestionRepository.save(question); // ✅ cascade ALL sẽ tự persist options
-            // KHÔNG gọi testOptionRepository.save(option) ở trên nữa
         }
-
-        TestRes res = new TestRes();
-        res.setId(savedTest.getId());
-        res.setLessonId(savedTest.getLessonTest().getId());
-        res.setActive(savedTest.getActive());
-        res.setTitle(savedTest.getTitle());
-        res.setType(savedTest.getTestType().toString());
-        res.setDescription(savedTest.getDescription());
-        res.setDurationMin(savedTest.getDurationMin());
-        return res;
     }
 
     //lấy Test theo testId
@@ -139,22 +178,6 @@ public class TestService {
             for(TestOption option:testOptionList){
                 TestOptionRes optionRes = new TestOptionRes();
                 optionRes.setId(option.getId());
-//                if(option.getContentType().equals(ContentType.VOCAB)){
-//                    Vocabulary vocabulary = vocabularyRepository.findById(option.getContentRefId())
-//                            .orElseThrow(()->new NotFoundException("Not found vocab for test option: "+option.getContentRefId()));
-//                    optionRes.setOptionText(vocabulary.getTerm_en());
-//                } else if (option.getContentType().equals(ContentType.SENTENCE)) {
-//                    Sentence sentence = sentenceRepository.findById(option.getContentRefId())
-//                            .orElseThrow(()->new NotFoundException("Not found sentence for test option: "+option.getContentRefId()));;
-//                    optionRes.setOptionText(sentence.getSentence_en());
-//                } else if (option.getContentType().equals(ContentType.IMAGE)) {
-//                    MediaAsset mediaAsset = mediaAssetRepository.findById(option.getContentRefId())
-//                            .orElseThrow(()-> new NotFoundException("Not found media fot test option: "+option.getContentRefId()));
-//                    optionRes.setOptionText(mediaAsset.getUrl());
-//                }else{
-//                    optionRes.setOptionText(option.getText());
-//                }
-
                 ContentType ct = option.getContentType(); // có thể null
 
                 if (ct == null) {
