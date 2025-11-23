@@ -15,8 +15,6 @@ public class GameReq {
     @NotNull(message = "Loại game không được để trống")
     private String type;
 
-//    @NotNull(message = "Độ khó không được để trống")
-//    private Integer difficulty;
 
     @NotNull(message = "Lesson ID không được để trống")
     private Long lessonId;

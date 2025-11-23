@@ -13,15 +13,18 @@ import java.util.Optional;
 
 @Repository
 public interface GameRepository extends JpaRepository<Game, Long> {
+
     @Query("""
     SELECT g.id FROM Game g
     WHERE g.type = :type
       AND g.lesson.id = :lessonId
+      AND g.active = true
     """)
     Optional<Long> findGameIdByTypeAndLessonId(
             @Param("type") GameType type,
             @Param("lessonId") Long lessonId
     );
+
     // Phương thức kiểm tra sự tồn tại
     boolean existsByTypeAndLessonId(GameType type, Long lessonId);
 
@@ -31,7 +34,7 @@ public interface GameRepository extends JpaRepository<Game, Long> {
 
     List<Game> findByLesson_IdIn(List<Long> lessonIds);
 
-    List<Game> findByLesson_IdAndTypeIn(Long lessonId, Collection<GameType> types);
+    List<Game> findByLesson_IdAndTypeInAndActiveTrue(Long lessonId, Collection<GameType> types);
 
     @Query("select g.type from Game g where g.lesson.id = :lessonId and g.type in :types")
     List<GameType> findTypesByLessonIdAndTypeIn(@Param("lessonId") Long lessonId,

@@ -330,7 +330,7 @@ public class GameService {
         }
 
         // Gọi phương thức repo mới
-        List<Game> games = gameRepository.findByLesson_IdAndTypeIn(lessonId, gameTypesToFetch);
+        List<Game> games = gameRepository.findByLesson_IdAndTypeInAndActiveTrue(lessonId, gameTypesToFetch);
 
         // Map danh sách Game sang DTO GameResByLesson
         return gameMapperIf.gamesToGameResByLessons(games);
