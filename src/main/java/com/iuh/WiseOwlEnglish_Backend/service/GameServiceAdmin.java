@@ -631,7 +631,13 @@ public class GameServiceAdmin {
             GameQuestionRes qReq = new GameQuestionRes();
             // Map dữ liệu câu hỏi
             qReq.setId(q.getId());
-            qReq.setQuestionText(q.getQuestionText());
+            if (game.getType() == GameType.SENTENCE_HIDDEN_WORD && q.getQuestionText() != null && q.getHiddenWord() != null) {
+                // Thay thế placeholder (___) bằng hiddenWord
+                qReq.setQuestionText(q.getQuestionText().replace("___", q.getHiddenWord()));
+            } else {
+                qReq.setQuestionText(q.getQuestionText());
+            }
+//            qReq.setQuestionText(q.getQuestionText());
             qReq.setHiddenWord(q.getHiddenWord());
             qReq.setRewardCore(q.getRewardCore());
             if (q.getPromptType() != null) qReq.setPromptType(q.getPromptType().toString());

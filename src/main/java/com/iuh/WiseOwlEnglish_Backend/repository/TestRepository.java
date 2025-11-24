@@ -12,4 +12,9 @@ public interface TestRepository extends JpaRepository<Test, Long> {
     List<Test> findByLessonTest_Id(Long lessonId);
     long countByLessonTest_Id(Long lessonId);
 
+    // === THÊM MỚI ===
+    // Tìm Test theo GradeLevel Id thông qua quan hệ LessonTest
+    // Sắp xếp theo thứ tự bài học (lesson order) sau đó đến thứ tự tạo test
+    List<Test> findByLessonTest_GradeLevel_IdOrderByLessonTest_OrderIndexAscCreatedAtAsc(Long gradeLevelId);
+
 }

@@ -6,6 +6,7 @@ import com.iuh.WiseOwlEnglish_Backend.dto.request.PairDTO;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.SubmitTestReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.TestReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonWithTestsRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.*;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
@@ -485,9 +486,64 @@ public class TestService {
             testResList.add(testRes);
         }
         return testResList;
-
-
     }
+
+    public List<LessonWithTestsRes> getTestsByGradeId(Long gradeId) {
+        // 1. Lấy tất cả các bài test thuộc grade đó
+        List<Test> tests = testRepository.findByLessonTest_GradeLevel_IdOrderByLessonTest_OrderIndexAscCreatedAtAsc(gradeId);
+
+        if (tests.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 2. Gom nhóm các Test theo Lesson (Key: Lesson, Value: List<Test>)
+        // Lưu ý: Lesson cần override equals/hashCode chuẩn hoặc dùng ID để gom nhóm nếu Lesson entity chưa tối ưu
+        // Ở đây dùng LinkedHashMap để giữ thứ tự query (đã sort theo orderIndex)
+        Map<Long, List<Test>> testsByLessonMap = tests.stream()
+                .collect(Collectors.groupingBy(
+                        t -> t.getLessonTest().getId(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        List<LessonWithTestsRes> result = new ArrayList<>();
+
+        // 3. Duyệt map để tạo DTO response
+        for (Map.Entry<Long, List<Test>> entry : testsByLessonMap.entrySet()) {
+            List<Test> testGroup = entry.getValue();
+            if (testGroup.isEmpty()) continue;
+
+            // Lấy thông tin Lesson từ phần tử đầu tiên trong nhóm
+            Lesson lesson = testGroup.get(0).getLessonTest();
+
+            LessonWithTestsRes lessonRes = new LessonWithTestsRes();
+            lessonRes.setLessonId(lesson.getId());
+            lessonRes.setUnitName(lesson.getUnitName());
+            lessonRes.setLessonName(lesson.getLessonName());
+            lessonRes.setOrderIndex(lesson.getOrderIndex());
+
+            // Map danh sách Test entity sang TestResByLesson DTO
+            List<TestResByLesson> testDtos = testGroup.stream().map(t -> {
+                TestResByLesson dto = new TestResByLesson();
+                dto.setId(t.getId());
+                dto.setLessonId(t.getLessonTest().getId());
+                dto.setTitle(t.getTitle());
+                dto.setType(t.getTestType().toString());
+                dto.setDescription(t.getDescription());
+                dto.setDurationMin(t.getDurationMin());
+                dto.setActive(t.getActive());
+                return dto;
+            }).toList();
+
+            lessonRes.setTests(testDtos);
+            result.add(lessonRes);
+        }
+
+        return result;
+    }
+
+
+
 }
 
 

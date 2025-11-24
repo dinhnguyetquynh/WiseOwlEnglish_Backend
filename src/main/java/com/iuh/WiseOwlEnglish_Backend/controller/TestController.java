@@ -5,6 +5,7 @@ import com.iuh.WiseOwlEnglish_Backend.dto.request.TestReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.SubmitTestRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.TestRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.TestResByLesson;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonWithTestsRes;
 import com.iuh.WiseOwlEnglish_Backend.service.TestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +47,12 @@ public class TestController {
         List<TestResByLesson> res = testService.getTestsByLessonId(lessonId);
         return ResponseEntity.ok(res);
 
+    }
+
+    @GetMapping("/by-grade")
+    public ResponseEntity<List<LessonWithTestsRes>> getTestsByGrade(@RequestParam Long gradeId) {
+        List<LessonWithTestsRes> res = testService.getTestsByGradeId(gradeId);
+        return ResponseEntity.ok(res);
     }
 }
 
