@@ -10,5 +10,6 @@ public class GameDetailRes {
     private long totalQuestion;
     private String gameType;
     private String title;
+    private boolean active;
     private LocalDateTime updatedDate;
 }

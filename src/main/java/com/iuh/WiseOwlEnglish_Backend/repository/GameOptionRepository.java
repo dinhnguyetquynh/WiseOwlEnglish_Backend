@@ -17,5 +17,6 @@ public interface GameOptionRepository extends JpaRepository<GameOption,Long> {
     """)
     List<GameOption> findByGameQuestionId(@Param("questionId") Long questionId);
 
-
+    // ✅ MỚI: Chỉ lấy option CHƯA BỊ XÓA và sắp xếp
+    List<GameOption> findByGameQuestionIdAndDeletedAtIsNullOrderByPositionAsc(Long questionId);
 }

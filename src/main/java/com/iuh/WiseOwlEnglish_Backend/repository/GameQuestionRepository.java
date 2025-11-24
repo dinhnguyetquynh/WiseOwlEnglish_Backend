@@ -29,4 +29,7 @@ public interface GameQuestionRepository extends JpaRepository<GameQuestion,Long>
                                      @Param("gameTypes") Collection<GameType> gameTypes);
 
     List<GameQuestion> findByGameIdOrderByPositionAsc(Long gameId);
+
+    // ✅ MỚI: Chỉ lấy câu hỏi CHƯA BỊ XÓA và sắp xếp theo thứ tự
+    List<GameQuestion> findByGameIdAndDeletedAtIsNullOrderByPositionAsc(Long gameId);
 }

@@ -1,10 +1,10 @@
-package com.iuh.WiseOwlEnglish_Backend.dto.request;
+package com.iuh.WiseOwlEnglish_Backend.dto.respone.admin;
 
 import lombok.Data;
 
 @Data
-public class GameOptionReq {
-    private Long id;
+public class GameOptionRes {
+    private long id;
     private String contentType;
     private Long contentRefId;
     private String answerText;

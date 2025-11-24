@@ -4,6 +4,9 @@ import com.iuh.WiseOwlEnglish_Backend.dto.request.GameOptionReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameQuestionReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.GameAdminDetailRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.GameOptionRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.GameQuestionRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.ContentType;
 import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.enums.PromptType;
@@ -562,6 +565,7 @@ public class GameServiceAdmin {
             detailRes.setGameType(game.getType().toString());
             detailRes.setUpdatedDate(game.getUpdatedAt());
             detailRes.setTitle(game.getTitle());
+            detailRes.setActive(game.isActive());
             gameDetailResList.add(detailRes);
         }
         res.setGames(gameDetailResList);
@@ -606,5 +610,187 @@ public class GameServiceAdmin {
                 .collect(Collectors.toList());
     }
 
+
+
+    //  Hàm lấy chi tiết update game
+    public GameAdminDetailRes getGameDetailForAdmin(Long gameId) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new NotFoundException("Game not found: " + gameId));
+
+        GameAdminDetailRes res = new GameAdminDetailRes();
+        res.setId(game.getId());
+        res.setTitle(game.getTitle());
+        res.setType(game.getType().toString());
+        res.setDifficulty(game.getDifficulty());
+        res.setLessonId(game.getLesson().getId());
+        res.setActive(game.isActive());
+
+        // Lấy danh sách câu hỏi
+        List<GameQuestion> questions = gameQuestionRepository.findByGameIdAndDeletedAtIsNullOrderByPositionAsc(gameId);
+        List<GameQuestionRes> questionResList = questions.stream().map(q -> {
+            GameQuestionRes qReq = new GameQuestionRes();
+            // Map dữ liệu câu hỏi
+            qReq.setId(q.getId());
+            qReq.setQuestionText(q.getQuestionText());
+            qReq.setHiddenWord(q.getHiddenWord());
+            qReq.setRewardCore(q.getRewardCore());
+            if (q.getPromptType() != null) qReq.setPromptType(q.getPromptType().toString());
+            qReq.setPromptRefId(q.getPromptRefId());
+
+            // Map Options
+            List<GameOption> options = gameOptionRepository.findByGameQuestionIdAndDeletedAtIsNullOrderByPositionAsc(q.getId());
+            List<GameOptionRes> optionResList = options.stream().map(o -> {
+                GameOptionRes oReq = new GameOptionRes();
+                oReq.setId(o.getId());
+                oReq.setAnswerText(o.getAnswerText());
+                oReq.setCorrect(o.isCorrect());
+                if (o.getContentType() != null) oReq.setContentType(o.getContentType().toString());
+                oReq.setContentRefId(o.getContentRefId());
+                if (o.getSide() != null) oReq.setSide(o.getSide().toString());
+                oReq.setPairKey(o.getPairKey());
+                return oReq;
+            }).toList();
+
+            qReq.setOptionReqs(optionResList);
+            return qReq;
+        }).toList();
+
+        res.setQuestions(questionResList);
+        return res;
+    }
+
+    //HÀM UPDATE GAME
+    @Transactional
+    public GameRes updateGame(Long gameId, GameReq req) {
+        // 1. Cập nhật thông tin chung của Game
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new NotFoundException("Game not found"));
+        // 2. KIỂM TRA TRẠNG THÁI ACTIVE
+        // Nếu game đang Active (true) => Chặn không cho sửa
+        if (game.isActive()) {
+            throw new BadRequestException("Game đang hoạt động (Active). Vui lòng tắt kích hoạt (Deactivate) trước khi chỉnh sửa để bảo vệ dữ liệu người dùng.");
+        }
+
+        game.setTitle(req.getTitle());
+        game.setActive(req.isActive());
+        game.setUpdatedAt(LocalDateTime.now());
+        // game.setDifficulty(...) // Nếu có update difficulty
+
+        Game savedGame = gameRepository.save(game);
+
+        // 2. Lấy danh sách câu hỏi hiện tại trong DB (chưa bị xóa mềm)
+        List<GameQuestion> existingQuestions = gameQuestionRepository.findByGameIdAndDeletedAtIsNullOrderByPositionAsc(gameId);
+
+        // Map để tra cứu nhanh question đang có theo ID
+        Map<Long, GameQuestion> existingQuestionMap = existingQuestions.stream()
+                .collect(Collectors.toMap(GameQuestion::getId, q -> q));
+
+        // Danh sách ID câu hỏi được gửi lên trong request (để xác định cái nào bị xóa)
+        Set<Long> reqQuestionIds = new HashSet<>();
+
+        int qIndex = 0;
+        for (var qReq : req.getQuestions()) {
+            qIndex++;
+            GameQuestion question;
+
+            // A. XỬ LÝ CÂU HỎI (QUESTION)
+            if (qReq.getId()!=null && existingQuestionMap.containsKey(qReq.getId())) {
+                // --- TRƯỜNG HỢP 1: UPDATE CÂU HỎI CŨ ---
+                question = existingQuestionMap.get(qReq.getId());
+                reqQuestionIds.add(question.getId()); // Đánh dấu là còn tồn tại
+
+                // Update các trường
+                question.setUpdatedAt(LocalDateTime.now());
+                // Chỉ set lại nếu có thay đổi (hoặc set luôn cũng được)
+            } else {
+                // --- TRƯỜNG HỢP 2: TẠO CÂU HỎI MỚI ---
+                question = new GameQuestion();
+                question.setGame(savedGame);
+                question.setCreatedAt(LocalDateTime.now());
+                question.setUpdatedAt(LocalDateTime.now());
+            }
+
+            // Set dữ liệu chung cho cả mới và cũ
+            question.setPosition(qIndex); // Cập nhật lại vị trí mới nhất
+            if (qReq.getPromptType() != null)
+                question.setPromptType(PromptType.valueOf(qReq.getPromptType()));
+            question.setPromptRefId(qReq.getPromptRefId());
+            question.setQuestionText(qReq.getQuestionText());
+            question.setHiddenWord(qReq.getHiddenWord());
+            question.setRewardCore(qReq.getRewardCore());
+
+            // Lưu câu hỏi trước để có ID dùng cho Option (nếu là mới)
+            GameQuestion savedQuestion = gameQuestionRepository.save(question);
+
+            // B. XỬ LÝ OPTIONS CỦA CÂU HỎI ĐÓ
+            if (qReq.getOptionReqs() != null) {
+                updateOptionsForQuestion(savedQuestion, qReq.getOptionReqs());
+            }
+        }
+
+        // 3. XỬ LÝ CÁC CÂU HỎI BỊ XÓA
+        // Những câu hỏi có trong DB nhưng KHÔNG có trong Request -> Cần xóa mềm
+        for (GameQuestion existingQ : existingQuestions) {
+            if (!reqQuestionIds.contains(existingQ.getId())) {
+                // Soft delete câu hỏi
+                existingQ.setDeletedAt(LocalDateTime.now());
+                gameQuestionRepository.save(existingQ);
+
+                // Soft delete luôn các options con của nó (nếu cần thiết)
+                // (Tuỳ logic của bạn, thường xoá cha thì con cũng coi như mất)
+            }
+        }
+
+        return gameMapper.toDTO(savedGame);
+    }
+
+    // Hàm phụ để xử lý Option (tương tự logic câu hỏi)
+    private void updateOptionsForQuestion(GameQuestion question, List<GameOptionReq> optionReqs) {
+        // Lấy options hiện tại của câu hỏi
+        List<GameOption> existingOptions = gameOptionRepository.findByGameQuestionIdAndDeletedAtIsNullOrderByPositionAsc(question.getId());
+        Map<Long, GameOption> existingOptionMap = existingOptions.stream()
+                .collect(Collectors.toMap(GameOption::getId, o -> o));
+        Set<Long> reqOptionIds = new HashSet<>();
+
+        int oIndex = 0;
+        for (var oReq : optionReqs) {
+            oIndex++;
+            GameOption option;
+
+            if (oReq.getId() != null && existingOptionMap.containsKey(oReq.getId())) {
+                // UPDATE OPTION CŨ
+                option = existingOptionMap.get(oReq.getId());
+                reqOptionIds.add(option.getId());
+                option.setUpdatedAt(LocalDateTime.now());
+            } else {
+                // CREATE OPTION MỚI
+                option = new GameOption();
+                option.setGameQuestion(question);
+                option.setCreatedAt(LocalDateTime.now());
+                option.setUpdatedAt(LocalDateTime.now());
+            }
+
+            // Set dữ liệu
+            option.setPosition(oIndex);
+            if (oReq.getContentType() != null)
+                option.setContentType(ContentType.valueOf(oReq.getContentType()));
+            option.setContentRefId(oReq.getContentRefId());
+            option.setAnswerText(oReq.getAnswerText());
+            option.setCorrect(oReq.isCorrect());
+            if (oReq.getSide() != null)
+                option.setSide(Side.valueOf(oReq.getSide()));
+            option.setPairKey(oReq.getPairKey());
+
+            gameOptionRepository.save(option);
+        }
+
+        // XÓA MỀM CÁC OPTION KHÔNG CÒN TRONG REQUEST
+        for (GameOption existingOpt : existingOptions) {
+            if (!reqOptionIds.contains(existingOpt.getId())) {
+                existingOpt.setDeletedAt(LocalDateTime.now());
+                gameOptionRepository.save(existingOpt);
+            }
+        }
+    }
 
 }

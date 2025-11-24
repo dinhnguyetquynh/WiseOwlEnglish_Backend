@@ -3,6 +3,7 @@ package com.iuh.WiseOwlEnglish_Backend.controller;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameAnswerReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.GameReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.GameAdminDetailRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.service.GameService;
 import com.iuh.WiseOwlEnglish_Backend.service.GameServiceAdmin;
@@ -116,6 +117,16 @@ public class GameController {
     ) {
         GameAnswerRes res = gameService.submitAnswer(req);
         return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/update/detail/{id}")
+    public ResponseEntity<GameAdminDetailRes> getGameDetailForAdmin(@PathVariable Long id) {
+        return ResponseEntity.ok(gameServiceAdmin.getGameDetailForAdmin(id));
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<GameRes> updateGame(@PathVariable Long id, @RequestBody GameReq req) {
+        return ResponseEntity.ok(gameServiceAdmin.updateGame(id, req));
     }
 
 }
