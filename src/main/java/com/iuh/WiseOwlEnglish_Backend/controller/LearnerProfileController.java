@@ -3,6 +3,7 @@ package com.iuh.WiseOwlEnglish_Backend.controller;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLearnerProfileReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.LearnerProfileReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.LearnerProfileRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.ProfileByLearnerRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.ProfileRes;
 import com.iuh.WiseOwlEnglish_Backend.service.LearnerProfileService;
 import com.iuh.WiseOwlEnglish_Backend.service.MyUserDetails;
@@ -61,5 +62,10 @@ public class LearnerProfileController {
     public ResponseEntity<LearnerProfileRes> getProfileById(@PathVariable("id") Long id){
         LearnerProfileRes profileRes = service.getLearnerProfile(id);
         return ResponseEntity.ok(profileRes);
+    }
+    @GetMapping("/{id}")
+    public  ResponseEntity<ProfileByLearnerRes> getProfileByLearner(@PathVariable("id") Long learnerId){
+        ProfileByLearnerRes res = service.getProfileByLearner(learnerId);
+        return ResponseEntity.ok(res);
     }
 }

@@ -3,6 +3,7 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLearnerProfileReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.LearnerProfileReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.LearnerProfileRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.ProfileByLearnerRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.ProfileRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.ProgressStatus;
 import com.iuh.WiseOwlEnglish_Backend.exception.*;
@@ -20,7 +21,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -179,6 +182,37 @@ public class LearnerProfileService {
     public LearnerProfileRes getLearnerProfile(Long profileId){
         LearnerProfile proflie = learnerProfileRepo.findById(profileId).orElseThrow(()-> new NotFoundException("Không tìm thấy profile: "+profileId));
         return learnerProfileMapper.toDTO(proflie);
+    }
+
+    public ProfileByLearnerRes getProfileByLearner(Long profileId){
+        LearnerProfile profile = learnerProfileRepo.findById(profileId).orElseThrow(()-> new NotFoundException("Không tìm thấy profile: "+profileId));
+        ProfileByLearnerRes res = new ProfileByLearnerRes();
+        res.setLearnerId(profile.getId());
+        res.setFullName(profile.getFullName());
+        res.setNickName(profile.getNickName());
+        res.setAvatarUrl(profile.getAvatarUrl());
+
+
+        // 3. SỬA LỖI DATE OF BIRTH
+        // Chuyển LocalDate sang LocalDateTime bằng cách thêm giờ bắt đầu ngày (00:00:00)
+        if (profile.getDateOfBirth() != null) {
+            res.setDateOfBirth(profile.getDateOfBirth());
+        }
+
+        // 4. TÍNH SỐ NGÀY ĐÃ HỌC
+        if (profile.getCreatedAt() != null) {
+            long daysBetween = ChronoUnit.DAYS.between(
+                    profile.getCreatedAt().toLocalDate(), // Lấy phần ngày của ngày tạo
+                    LocalDate.now()                       // Lấy ngày hiện tại
+            );
+            // Cộng thêm 1 nếu muốn tính cả ngày đầu tiên là 1 ngày
+            res.setNumberDayStudied((int) daysBetween);
+            res.setCreatedAt(profile.getCreatedAt());
+        } else {
+            res.setNumberDayStudied(0);
+        }
+
+        return res;
     }
 
 }

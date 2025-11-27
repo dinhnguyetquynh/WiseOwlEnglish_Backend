@@ -73,6 +73,8 @@ dependencies {
 	implementation("org.flywaydb:flyway-core:11.17.0")
 	// https://mvnrepository.com/artifact/org.flywaydb/flyway-database-postgresql
 	implementation("org.flywaydb:flyway-database-postgresql:11.17.0")
+	// https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5
+	implementation("org.apache.httpcomponents.client5:httpclient5:5.5.1")
 
 
 }
