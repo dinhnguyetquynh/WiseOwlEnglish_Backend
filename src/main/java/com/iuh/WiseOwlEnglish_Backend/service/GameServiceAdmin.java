@@ -510,7 +510,7 @@ public class GameServiceAdmin {
     @Transactional(readOnly = true)
     public List<LessonWithGamesDTO> getLessonsWithGamesByGrade(Long gradeId) {
         // 1. Lấy tất cả Lesson thuộc GradeLevel, sắp xếp theo thứ tự
-        List<Lesson> lessons = lessonRepository.findByGradeLevel_IdOrderByOrderIndexAsc(gradeId);
+        List<Lesson> lessons = lessonRepository.findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(gradeId);
         if (lessons.isEmpty()) {
             return Collections.emptyList();
         }

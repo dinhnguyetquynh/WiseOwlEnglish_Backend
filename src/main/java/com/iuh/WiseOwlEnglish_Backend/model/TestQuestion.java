@@ -63,4 +63,7 @@ public class TestQuestion {
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TestOption> options;
 
+    @Column(name = "hidden_word")
+    private String hiddenWord;
+
 }

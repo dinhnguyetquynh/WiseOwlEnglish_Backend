@@ -41,105 +41,105 @@ public class TestService {
 
     private final TransactionTemplate transactionTemplate;
 
-    private static final int MAX_RETRY = 3;
-    private static final long RETRY_SLEEP_MS = 50L;
-
-    //ADMIN FUNCTIONALITY
-    public TestRes createTest(TestReq request) {
-        int attempt = 0;
-        while (true) {
-            attempt++;
-            try {
-                // each attempt runs inside its own transaction
-                return transactionTemplate.execute(status -> {
-                    // --- create Test ---
-                    Test test = new Test();
-                    Lesson lesson = lessonRepository.findById(request.getLessonId())
-                            .orElseThrow(() -> new RuntimeException("Lesson not found"));
-                    test.setLessonTest(lesson);
-                    test.setActive(request.getActive());
-                    test.setTitle(request.getTitle());
-                    test.setTestType(TestType.valueOf(request.getType()));
-                    test.setDescription(request.getDescription());
-                    test.setDurationMin(request.getDurationMin());
-                    test.setCreatedAt(LocalDateTime.now());
-                    test.setUpdatedAt(LocalDateTime.now());
-
-                    Test savedTest = testRepository.save(test); // persisted and has id
-
-                    // --- determine starting order for questions (max existing order) ---
-                    int maxQuestionOrder = testQuestionRepository.findMaxOrderInTestByTestId(savedTest.getId());
-                    int nextQuestionOrder = maxQuestionOrder + 1;
-
-                    for (var qReq : request.getQuestions()) {
-                        TestQuestion question = new TestQuestion();
-                        question.setTest(savedTest);
-
-                        // System assigns orderInTest (no input from user)
-                        question.setOrderInTest(nextQuestionOrder++);
-                        question.setQuestionType(TestQuestionType.valueOf(qReq.getQuestionType()));
-                        question.setStemType(StemType.valueOf(qReq.getStemType()));
-                        question.setStemRefId(qReq.getStemRefId());
-                        question.setStemText(qReq.getStemText());
-                        question.setDifficulty(1);
-                        question.setMaxScore(qReq.getMaxScore());
-                        question.setCreatedAt(LocalDateTime.now());
-                        question.setUpdatedAt(LocalDateTime.now());
-
-                        // Options: assign orders starting from 1 for each new question
-                        List<TestOption> opts = new ArrayList<>();
-                        int optionOrder = 1;
-                        for (var oReq : qReq.getOptions()) {
-                            TestOption option = new TestOption();
-                            option.setQuestion(question);
-                            option.setContentType(ContentType.valueOf(oReq.getContentType()));
-                            option.setContentRefId(oReq.getContentRefId());
-                            option.setText(oReq.getText());
-                            option.setCorrect(oReq.isCorrect());
-                            option.setOrder(optionOrder++);
-                            if (oReq.getSide() != null) {
-                                option.setSide(Side.valueOf(oReq.getSide()));
-                            }
-                            option.setPairKey(oReq.getPairKey());
-                            option.setCreatedAt(LocalDateTime.now());
-                            option.setUpdatedAt(LocalDateTime.now());
-                            opts.add(option);
-                        }
-                        question.setOptions(opts);
-
-                        // Save question (cascade will save options if configured)
-                        testQuestionRepository.save(question);
-                    }
-
-                    // Build response DTO
-                    TestRes res = new TestRes();
-                    res.setId(savedTest.getId());
-                    res.setLessonId(savedTest.getLessonTest().getId());
-                    res.setActive(savedTest.getActive());
-                    res.setTitle(savedTest.getTitle());
-                    res.setType(savedTest.getTestType().toString());
-                    res.setDescription(savedTest.getDescription());
-                    res.setDurationMin(savedTest.getDurationMin());
-                    return res;
-                });
-            } catch (DataIntegrityViolationException dive) {
-                // Likely a unique constraint violation on (test_id, orderInTest)
-                if (attempt >= MAX_RETRY) {
-                    throw new BadRequestException("Khong tao duoc test question (conflict orderIndex) sau " + MAX_RETRY + " lan thu.");
-                }
-                // short backoff to reduce collision chance
-                try {
-                    Thread.sleep(RETRY_SLEEP_MS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                // then retry
-            } catch (Exception exception) {
-                // lỗi khác -> ném BadRequest
-                throw new BadRequestException("Khong tao duoc test: " + exception.getMessage());
-            }
-        }
-    }
+//    private static final int MAX_RETRY = 3;
+//    private static final long RETRY_SLEEP_MS = 50L;
+//
+//    //ADMIN FUNCTIONALITY
+//    public TestRes createTest(TestReq request) {
+//        int attempt = 0;
+//        while (true) {
+//            attempt++;
+//            try {
+//                // each attempt runs inside its own transaction
+//                return transactionTemplate.execute(status -> {
+//                    // --- create Test ---
+//                    Test test = new Test();
+//                    Lesson lesson = lessonRepository.findById(request.getLessonId())
+//                            .orElseThrow(() -> new RuntimeException("Lesson not found"));
+//                    test.setLessonTest(lesson);
+//                    test.setActive(request.getActive());
+//                    test.setTitle(request.getTitle());
+//                    test.setTestType(TestType.valueOf(request.getType()));
+//                    test.setDescription(request.getDescription());
+//                    test.setDurationMin(request.getDurationMin());
+//                    test.setCreatedAt(LocalDateTime.now());
+//                    test.setUpdatedAt(LocalDateTime.now());
+//
+//                    Test savedTest = testRepository.save(test); // persisted and has id
+//
+//                    // --- determine starting order for questions (max existing order) ---
+//                    int maxQuestionOrder = testQuestionRepository.findMaxOrderInTestByTestId(savedTest.getId());
+//                    int nextQuestionOrder = maxQuestionOrder + 1;
+//
+//                    for (var qReq : request.getQuestions()) {
+//                        TestQuestion question = new TestQuestion();
+//                        question.setTest(savedTest);
+//
+//                        // System assigns orderInTest (no input from user)
+//                        question.setOrderInTest(nextQuestionOrder++);
+//                        question.setQuestionType(TestQuestionType.valueOf(qReq.getQuestionType()));
+//                        question.setStemType(StemType.valueOf(qReq.getStemType()));
+//                        question.setStemRefId(qReq.getStemRefId());
+//                        question.setStemText(qReq.getStemText());
+//                        question.setDifficulty(1);
+//                        question.setMaxScore(qReq.getMaxScore());
+//                        question.setCreatedAt(LocalDateTime.now());
+//                        question.setUpdatedAt(LocalDateTime.now());
+//
+//                        // Options: assign orders starting from 1 for each new question
+//                        List<TestOption> opts = new ArrayList<>();
+//                        int optionOrder = 1;
+//                        for (var oReq : qReq.getOptions()) {
+//                            TestOption option = new TestOption();
+//                            option.setQuestion(question);
+//                            option.setContentType(ContentType.valueOf(oReq.getContentType()));
+//                            option.setContentRefId(oReq.getContentRefId());
+//                            option.setText(oReq.getText());
+//                            option.setCorrect(oReq.isCorrect());
+//                            option.setOrder(optionOrder++);
+//                            if (oReq.getSide() != null) {
+//                                option.setSide(Side.valueOf(oReq.getSide()));
+//                            }
+//                            option.setPairKey(oReq.getPairKey());
+//                            option.setCreatedAt(LocalDateTime.now());
+//                            option.setUpdatedAt(LocalDateTime.now());
+//                            opts.add(option);
+//                        }
+//                        question.setOptions(opts);
+//
+//                        // Save question (cascade will save options if configured)
+//                        testQuestionRepository.save(question);
+//                    }
+//
+//                    // Build response DTO
+//                    TestRes res = new TestRes();
+//                    res.setId(savedTest.getId());
+//                    res.setLessonId(savedTest.getLessonTest().getId());
+//                    res.setActive(savedTest.getActive());
+//                    res.setTitle(savedTest.getTitle());
+//                    res.setType(savedTest.getTestType().toString());
+//                    res.setDescription(savedTest.getDescription());
+//                    res.setDurationMin(savedTest.getDurationMin());
+//                    return res;
+//                });
+//            } catch (DataIntegrityViolationException dive) {
+//                // Likely a unique constraint violation on (test_id, orderInTest)
+//                if (attempt >= MAX_RETRY) {
+//                    throw new BadRequestException("Khong tao duoc test question (conflict orderIndex) sau " + MAX_RETRY + " lan thu.");
+//                }
+//                // short backoff to reduce collision chance
+//                try {
+//                    Thread.sleep(RETRY_SLEEP_MS);
+//                } catch (InterruptedException e) {
+//                    Thread.currentThread().interrupt();
+//                }
+//                // then retry
+//            } catch (Exception exception) {
+//                // lỗi khác -> ném BadRequest
+//                throw new BadRequestException("Khong tao duoc test: " + exception.getMessage());
+//            }
+//        }
+//    }
 
     //lấy Test theo testId
     public TestRes getTestById(Long id){
@@ -488,59 +488,8 @@ public class TestService {
         return testResList;
     }
 
-    public List<LessonWithTestsRes> getTestsByGradeId(Long gradeId) {
-        // 1. Lấy tất cả các bài test thuộc grade đó
-        List<Test> tests = testRepository.findByLessonTest_GradeLevel_IdOrderByLessonTest_OrderIndexAscCreatedAtAsc(gradeId);
 
-        if (tests.isEmpty()) {
-            return Collections.emptyList();
-        }
 
-        // 2. Gom nhóm các Test theo Lesson (Key: Lesson, Value: List<Test>)
-        // Lưu ý: Lesson cần override equals/hashCode chuẩn hoặc dùng ID để gom nhóm nếu Lesson entity chưa tối ưu
-        // Ở đây dùng LinkedHashMap để giữ thứ tự query (đã sort theo orderIndex)
-        Map<Long, List<Test>> testsByLessonMap = tests.stream()
-                .collect(Collectors.groupingBy(
-                        t -> t.getLessonTest().getId(),
-                        LinkedHashMap::new,
-                        Collectors.toList()
-                ));
-
-        List<LessonWithTestsRes> result = new ArrayList<>();
-
-        // 3. Duyệt map để tạo DTO response
-        for (Map.Entry<Long, List<Test>> entry : testsByLessonMap.entrySet()) {
-            List<Test> testGroup = entry.getValue();
-            if (testGroup.isEmpty()) continue;
-
-            // Lấy thông tin Lesson từ phần tử đầu tiên trong nhóm
-            Lesson lesson = testGroup.get(0).getLessonTest();
-
-            LessonWithTestsRes lessonRes = new LessonWithTestsRes();
-            lessonRes.setLessonId(lesson.getId());
-            lessonRes.setUnitName(lesson.getUnitName());
-            lessonRes.setLessonName(lesson.getLessonName());
-            lessonRes.setOrderIndex(lesson.getOrderIndex());
-
-            // Map danh sách Test entity sang TestResByLesson DTO
-            List<TestResByLesson> testDtos = testGroup.stream().map(t -> {
-                TestResByLesson dto = new TestResByLesson();
-                dto.setId(t.getId());
-                dto.setLessonId(t.getLessonTest().getId());
-                dto.setTitle(t.getTitle());
-                dto.setType(t.getTestType().toString());
-                dto.setDescription(t.getDescription());
-                dto.setDurationMin(t.getDurationMin());
-                dto.setActive(t.getActive());
-                return dto;
-            }).toList();
-
-            lessonRes.setTests(testDtos);
-            result.add(lessonRes);
-        }
-
-        return result;
-    }
 
 
 

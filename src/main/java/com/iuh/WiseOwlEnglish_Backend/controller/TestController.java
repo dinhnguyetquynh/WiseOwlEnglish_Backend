@@ -19,11 +19,6 @@ import java.util.List;
 public class TestController {
     private final TestService testService;
 
-    @PostMapping("/create")
-    public ResponseEntity<TestRes> createTest(@RequestBody TestReq req) {
-        TestRes res = testService.createTest(req);
-        return ResponseEntity.ok(res);
-    }
 
     @GetMapping("/get-test/{id}")
     public ResponseEntity<TestRes> getTestById(@PathVariable Long id){
@@ -49,10 +44,6 @@ public class TestController {
 
     }
 
-    @GetMapping("/by-grade")
-    public ResponseEntity<List<LessonWithTestsRes>> getTestsByGrade(@RequestParam Long gradeId) {
-        List<LessonWithTestsRes> res = testService.getTestsByGradeId(gradeId);
-        return ResponseEntity.ok(res);
-    }
+
 }
 

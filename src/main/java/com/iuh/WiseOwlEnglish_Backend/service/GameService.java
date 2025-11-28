@@ -379,6 +379,11 @@ public class GameService {
         attempt.setCurrentQuestionId(question.getId()); // Cập nhật câu hỏi vừa trả lời
         if (result.isCorrect()) {
             attempt.setRewardCount(attempt.getRewardCount() + result.reward());
+
+            // === CỘNG ĐIỂM VÀO VÍ ===
+            LearnerProfile p = attempt.getLearnerProfile();
+            p.setPointBalance(p.getPointBalance() + result.reward());
+            learnerProfileRepository.save(p);
         } else {
             attempt.setWrongCount(attempt.getWrongCount() + 1);
         }

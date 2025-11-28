@@ -27,7 +27,8 @@ public class LessonService {
     private final GameRepository gameRepository;
 
     public List<LessonDTORS> getAllActiveByGradeLevelId(Long gradeLevelId) {
-        return lessonRepository.findAllByGradeLevel_IdAndActiveTrueOrderByOrderIndexAsc(gradeLevelId)
+        // SỬA: ActiveTrue + DeletedAtIsNull
+        return lessonRepository.findAllByGradeLevel_IdAndActiveTrueAndDeletedAtIsNullOrderByOrderIndexAsc(gradeLevelId)
                 .stream()
                 .map(lessonMapper::toDTO)
                 .toList();
@@ -39,9 +40,8 @@ public class LessonService {
 
         Optional<Long> gradeId = grogressRepo.findGradeLevelIdByLearnerAndStatusAndPrimaryTrue(learnerProfileId, ProgressStatus.IN_PROGRESS);
 
-        // 3) Danh sách lesson theo grade
-        List<Lesson> lessons = lessonRepo.findByGradeLevel_IdOrderByOrderIndexAsc(gradeId.orElse(1L));
-
+        // SỬA: Chỉ lấy bài học chưa bị xoá để tính toán hiển thị
+        List<Lesson> lessons = lessonRepo.findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(gradeId.orElse(1L));
         // 4) Lấy tiến độ theo batch
         List<Long> lessonIds = lessons.stream().map(Lesson::getId).toList();
         Map<Long, Integer> percentMap = lessonProgressRepo
@@ -86,8 +86,8 @@ public class LessonService {
     //FUNCTION FOR ADMIN
 
     public List<LessonByGradeRes> getListLessonByGrade(long gradeId){
-        List<Lesson> lessonList = lessonRepository.findByGradeLevel_IdOrderByOrderIndexAsc(gradeId);
-
+        // SỬA: Thêm DeletedAtIsNull
+        List<Lesson> lessonList = lessonRepository.findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(gradeId);
         List<LessonByGradeRes> lessonByGradeRes = new ArrayList<>();
         for(Lesson lesson:lessonList){
             LessonByGradeRes res = new LessonByGradeRes();
@@ -161,7 +161,7 @@ public class LessonService {
         ProgressStatus gradeStatus = (lgp != null) ? lgp.getStatus() : ProgressStatus.LOCKED;
 
         // 3. Danh sách lesson theo grade
-        List<Lesson> lessons = lessonRepo.findByGradeLevel_IdOrderByOrderIndexAsc(g.getId());
+        List<Lesson> lessons = lessonRepo.findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(g.getId());
 
         // 4. Map DTO
         List<LessonBriefRes> items = new ArrayList<>(lessons.size());

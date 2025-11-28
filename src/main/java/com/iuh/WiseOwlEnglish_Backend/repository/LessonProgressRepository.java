@@ -14,4 +14,7 @@ public interface LessonProgressRepository extends JpaRepository<LessonProgress, 
     @Query("SELECT lp FROM LessonProgress lp WHERE lp.lesson.gradeLevel.orderIndex = :orderIndex")
     List<LessonProgress> findByGradeOrderIndex(@Param("orderIndex") int orderIndex);
 
+    // Kiểm tra xem có bất kỳ tiến độ nào liên quan đến lessonId không
+    boolean existsByLesson_Id(Long lessonId);
+
 }

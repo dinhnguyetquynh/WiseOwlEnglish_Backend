@@ -61,5 +61,7 @@ public class LearnerProfile {
     @JsonIgnore
     private Set<LearnerGradeProgress> learnerGradeProgress;
 
-
+    // 👇 THÊM TRƯỜNG MỚI NÀY
+    @Column(name = "point_balance")
+    private int pointBalance = 0;
 }

@@ -14,4 +14,10 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
     long countLessonsByGradeOrderIndex(@Param("orderIndex") int orderIndex);
 
     List<Lesson> findByGradeLevel_OrderIndex(int orderIndex);
+
+    // 1. Cho Learner: Lấy lesson đang Active và Chưa xoá
+    List<Lesson> findAllByGradeLevel_IdAndActiveTrueAndDeletedAtIsNullOrderByOrderIndexAsc(Long gradeLevelId);
+
+    // 2. Cho Admin: Lấy tất cả lesson (kể cả chưa active) nhưng Chưa xoá
+    List<Lesson> findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(Long gradeLevelId);
 }

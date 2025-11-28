@@ -50,6 +50,8 @@ public class Test {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @OneToMany(mappedBy = "test", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TestQuestion> questions;

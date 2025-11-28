@@ -4,10 +4,8 @@ import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.CreateLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonRes;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
-import com.iuh.WiseOwlEnglish_Backend.model.GradeLevel;
-import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
-import com.iuh.WiseOwlEnglish_Backend.repository.GradeLevelRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.LessonRepository;
+import com.iuh.WiseOwlEnglish_Backend.model.*;
+import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +21,12 @@ import java.util.List;
 public class LessonAdminService {
     private final LessonRepository lessonRepository;
     private final GradeLevelRepository gradeLevelRepository;
+    private final LessonProgressRepository lessonProgressRepo;
+    private final GameRepository gameRepository;
+    // Các repo khác để Soft Delete (Vocabulary, Sentence, Test...)
+    private final VocabularyRepository vocabularyRepository;
+    private final SentenceRepository sentenceRepository;
+    private final TestRepository testRepository;
 
     @Transactional
     public CreateLessonRes createLesson(CreateLessonReq req){
@@ -62,7 +66,7 @@ public class LessonAdminService {
     }
 
     public List<LessonRes> getListLessonByGradeId(long gradeId){
-        List<Lesson> lessonList = lessonRepository.findByGradeLevel_IdOrderByOrderIndexAsc(gradeId);
+        List<Lesson> lessonList = lessonRepository.findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(gradeId);
         List<LessonRes> lessonResList = new ArrayList<>();
         for(Lesson lesson:lessonList){
             LessonRes res = toLessonDTO(lesson);
@@ -83,6 +87,103 @@ public class LessonAdminService {
         lessonRes.setUpdatedAt(lesson.getUpdatedAt());
         return lessonRes;
     }
+    @Transactional
+    public void deleteLesson(Long lessonId) {
+        // 1. Tìm bài học
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new NotFoundException("Lesson not found: " + lessonId));
+
+        // 2. Kiểm tra điều kiện
+        boolean hasLearners = lessonProgressRepo.existsByLesson_Id(lessonId);
+        boolean isActive = lesson.isActive();
+
+        // 3. Phân nhánh xử lý
+        if (!isActive && !hasLearners) {
+            // === TRƯỜNG HỢP 1: XOÁ CỨNG (HARD DELETE) ===
+            // Bài chưa active và chưa ai học -> Rác -> Xoá vĩnh viễn khỏi DB
+            performHardDelete(lesson);
+        } else {
+            // === TRƯỜNG HỢP 2: XOÁ MỀM (SOFT DELETE) ===
+            // Bài đang active hoặc đã có người học -> Ẩn đi để bảo toàn dữ liệu
+            performSoftDelete(lesson);
+        }
+    }
+
+    // --- Hàm hỗ trợ Xoá Cứng ---
+    private void performHardDelete(Lesson lesson) {
+        // Trong Model Lesson.java, Vocabulary, Sentence, Test đã được cấu hình CascadeType.ALL + orphanRemoval = true.
+        // Do đó, khi xoá Lesson, JPA sẽ tự động xoá Vocab, Sentence, Test liên quan.
+
+        // TUY NHIÊN: Model Lesson hiện tại KHÔNG có liên kết @OneToMany tới Game.
+        // Vì vậy cần xoá thủ công Game trước để tránh lỗi khoá ngoại (Foreign Key).
+        List<Game> games = gameRepository.findByLesson_Id(lesson.getId());
+        gameRepository.deleteAll(games);
+
+        // Sau đó xoá Lesson (Vocab, Sentence, Test sẽ tự bay màu theo)
+        lessonRepository.delete(lesson);
+
+        System.out.println("Đã HARD DELETE bài học ID: " + lesson.getId());
+    }
+
+    // --- Hàm hỗ trợ Xoá Mềm (Logic cũ đã làm) ---
+    private void performSoftDelete(Lesson lesson) {
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1. Ẩn Lesson
+        lesson.setDeletedAt(now);
+        lesson.setActive(false);
+        lessonRepository.save(lesson);
+
+        // 2. Ẩn các thành phần con (Vocabulary, Sentence, Game)
+        // (Lưu ý: Chỉ ẩn những cái chưa bị ẩn)
+
+        // Vocab
+        List<Vocabulary> vocabs = vocabularyRepository.findByLessonVocabulary_Id(lesson.getId());
+        for (Vocabulary v : vocabs) {
+            if (v.getDeletedAt() == null) {
+                v.setDeletedAt(now);
+                vocabularyRepository.save(v);
+            }
+        }
+
+        // Sentence
+        List<Sentence> sentences = sentenceRepository.findByLessonSentence_Id(lesson.getId());
+        for (Sentence s : sentences) {
+            if (s.getDeletedAt() == null) {
+                s.setDeletedAt(now);
+                sentenceRepository.save(s);
+            }
+        }
+
+        // Game
+        List<Game> games = gameRepository.findByLesson_Id(lesson.getId());
+        for (Game g : games) {
+            if (g.getDeletedAt() == null) {
+                g.setDeletedAt(now);
+                g.setActive(false); // Tắt active của game luôn
+                gameRepository.save(g);
+            }
+        }
+
+        // Test (Test chưa có deletedAt nên dùng active và đổi tên)
+        List<Test> tests = testRepository.findByLessonTest_Id(lesson.getId());
+        for (Test t : tests) {
+//            if (Boolean.TRUE.equals(t.getActive())) {
+//                t.setActive(false);
+//                t.setTitle("[DELETED] " + t.getTitle());
+//                t.setUpdatedAt(now);
+//                testRepository.save(t);
+//            }
+            if(t.getDeletedAt()==null){
+                t.setDeletedAt(now);
+                t.setActive(false);
+                testRepository.save(t);
+            }
+        }
+
+        System.out.println("Đã SOFT DELETE bài học ID: " + lesson.getId());
+    }
+
 
 
 }

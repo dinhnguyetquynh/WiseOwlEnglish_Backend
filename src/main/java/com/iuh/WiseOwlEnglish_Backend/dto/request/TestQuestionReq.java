@@ -10,6 +10,7 @@ public class TestQuestionReq {
     private String stemType;
     private Long stemRefId;
     private String stemText;
+    private String hiddenWord;
     private Integer maxScore;
     List<TestOptionReq> options;
 }

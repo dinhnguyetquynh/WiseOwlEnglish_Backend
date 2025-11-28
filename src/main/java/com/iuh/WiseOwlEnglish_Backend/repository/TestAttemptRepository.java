@@ -43,4 +43,7 @@ public interface TestAttemptRepository extends JpaRepository<TestAttempt,Long> {
             TestAttemptStatus status
     );
 
+    // 👇 THÊM MỚI: Kiểm tra xem có lượt làm bài nào cho testId không
+    boolean existsByTest_Id(Long testId);
+
 }

@@ -48,4 +48,12 @@ public class LessonAdminController {
 
         return ResponseEntity.ok(detail);
     }
+
+    @DeleteMapping("/delete/{lessonId}")
+    public ResponseEntity<String> deleteLesson(@PathVariable Long lessonId) {
+        // Gọi hàm delete thông minh vừa viết
+        adminService.deleteLesson(lessonId);
+
+        return ResponseEntity.ok("Xoá bài học thành công (Hệ thống tự động chọn Xoá cứng hoặc Xoá mềm)");
+    }
 }
