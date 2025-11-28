@@ -7,6 +7,7 @@ import com.iuh.WiseOwlEnglish_Backend.dto.request.SubmitTestReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.TestReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.*;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonWithTestsRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.TestsOfLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.*;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
@@ -468,6 +469,8 @@ public class TestService {
         if(lessonId==null){
             throw new BadRequestException("LessonId đang là null");
         }
+
+
         List<Test> testList = testRepository.findByLessonTest_Id(lessonId);
         if(testList==null){
             throw new NotFoundException("Bài học này chưa có bài kiểm tra");

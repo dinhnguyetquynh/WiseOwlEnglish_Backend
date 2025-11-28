@@ -1,12 +1,16 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
+import com.iuh.WiseOwlEnglish_Backend.dto.request.TestOptionReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.request.TestQuestionReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.TestReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.TestRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.TestResByLesson;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonWithTestsRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.TestAdminByLessonRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.TestsOfLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.*;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
+import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
 import com.iuh.WiseOwlEnglish_Backend.model.Test;
 import com.iuh.WiseOwlEnglish_Backend.model.TestOption;
@@ -21,11 +25,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.text.Normalizer;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,18 +40,21 @@ public class TestAdminService {
     private final TransactionTemplate transactionTemplate;
     private final TestQuestionRepository testQuestionRepository;
 
-    public List<TestAdminByLessonRes> getTestsByLessonId(Long lessonId) {
+    public TestsOfLessonRes getTestsByLessonId(Long lessonId) {
         if (lessonId == null) {
             throw new BadRequestException("LessonId đang là null");
         }
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(()-> new NotFoundException("Khong tim thay lesson id :"+lessonId));
+        TestsOfLessonRes res1 = new TestsOfLessonRes();
+        res1.setId(lesson.getId());
+        res1.setUnitNumber(lesson.getUnitName());
+        res1.setUnitName(lesson.getLessonName());
 
         // 1. Lấy danh sách Test theo LessonId
         // (Lưu ý: Nên đảm bảo method này trong Repo đã lọc deletedAt IS NULL như các bước trước)
         List<Test> testList = testRepository.findByLessonTest_Id(lessonId);
 
-        if (testList == null || testList.isEmpty()) {
-            return new ArrayList<>();
-        }
 
         List<TestAdminByLessonRes> testResList = new ArrayList<>();
         for (Test test : testList) {
@@ -77,8 +83,8 @@ public class TestAdminService {
 
             testResList.add(res);
         }
-
-        return testResList;
+        res1.setTestList(testResList);
+        return res1;
     }
 
     public List<LessonWithTestsRes> getTestsByGradeId(Long gradeId) {
@@ -139,14 +145,110 @@ public class TestAdminService {
     private static final long RETRY_SLEEP_MS = 50L;
 
     //ADMIN FUNCTIONALITY
+//    public TestRes createTest(TestReq request) {
+//        int attempt = 0;
+//        while (true) {
+//            attempt++;
+//            try {
+//                // each attempt runs inside its own transaction
+//                return transactionTemplate.execute(status -> {
+//                    // --- create Test ---
+//                    Test test = new Test();
+//                    Lesson lesson = lessonRepository.findById(request.getLessonId())
+//                            .orElseThrow(() -> new RuntimeException("Lesson not found"));
+//                    test.setLessonTest(lesson);
+//                    test.setActive(request.getActive());
+//                    test.setTitle(request.getTitle());
+//                    test.setTestType(TestType.valueOf(request.getType()));
+//                    test.setDescription(request.getDescription());
+//                    test.setDurationMin(request.getDurationMin());
+//                    test.setCreatedAt(LocalDateTime.now());
+//                    test.setUpdatedAt(LocalDateTime.now());
+//
+//                    Test savedTest = testRepository.save(test); // persisted and has id
+//
+//                    // --- determine starting order for questions (max existing order) ---
+//                    int maxQuestionOrder = testQuestionRepository.findMaxOrderInTestByTestId(savedTest.getId());
+//                    int nextQuestionOrder = maxQuestionOrder + 1;
+//
+//                    for (var qReq : request.getQuestions()) {
+//                        TestQuestion question = new TestQuestion();
+//                        question.setTest(savedTest);
+//
+//                        // System assigns orderInTest (no input from user)
+//                        question.setOrderInTest(nextQuestionOrder++);
+//                        question.setQuestionType(TestQuestionType.valueOf(qReq.getQuestionType()));
+//                        question.setStemType(StemType.valueOf(qReq.getStemType()));
+//                        question.setStemRefId(qReq.getStemRefId());
+//                        question.setStemText(qReq.getStemText());
+//                        question.setHiddenWord(qReq.getHiddenWord());
+//                        question.setDifficulty(1);
+//                        question.setMaxScore(qReq.getMaxScore());
+//                        question.setCreatedAt(LocalDateTime.now());
+//                        question.setUpdatedAt(LocalDateTime.now());
+//
+//                        // Options: assign orders starting from 1 for each new question
+//                        List<TestOption> opts = new ArrayList<>();
+//                        int optionOrder = 1;
+//                        for (var oReq : qReq.getOptions()) {
+//                            TestOption option = new TestOption();
+//                            option.setQuestion(question);
+//                            option.setContentType(ContentType.valueOf(oReq.getContentType()));
+//                            option.setContentRefId(oReq.getContentRefId());
+//                            option.setText(oReq.getText());
+//                            option.setCorrect(oReq.isCorrect());
+//                            option.setOrder(optionOrder++);
+//                            if (oReq.getSide() != null) {
+//                                option.setSide(Side.valueOf(oReq.getSide()));
+//                            }
+//                            option.setPairKey(oReq.getPairKey());
+//                            option.setCreatedAt(LocalDateTime.now());
+//                            option.setUpdatedAt(LocalDateTime.now());
+//                            opts.add(option);
+//                        }
+//                        question.setOptions(opts);
+//
+//                        // Save question (cascade will save options if configured)
+//                        testQuestionRepository.save(question);
+//                    }
+//
+//                    // Build response DTO
+//                    TestRes res = new TestRes();
+//                    res.setId(savedTest.getId());
+//                    res.setLessonId(savedTest.getLessonTest().getId());
+//                    res.setActive(savedTest.getActive());
+//                    res.setTitle(savedTest.getTitle());
+//                    res.setType(savedTest.getTestType().toString());
+//                    res.setDescription(savedTest.getDescription());
+//                    res.setDurationMin(savedTest.getDurationMin());
+//                    return res;
+//                });
+//            } catch (DataIntegrityViolationException dive) {
+//                // Likely a unique constraint violation on (test_id, orderInTest)
+//                if (attempt >= MAX_RETRY) {
+//                    throw new BadRequestException("Khong tao duoc test question (conflict orderIndex) sau " + MAX_RETRY + " lan thu.");
+//                }
+//                // short backoff to reduce collision chance
+//                try {
+//                    Thread.sleep(RETRY_SLEEP_MS);
+//                } catch (InterruptedException e) {
+//                    Thread.currentThread().interrupt();
+//                }
+//                // then retry
+//            } catch (Exception exception) {
+//                // lỗi khác -> ném BadRequest
+//                throw new BadRequestException("Khong tao duoc test: " + exception.getMessage());
+//            }
+//        }
+//    }
+    // ================== CẬP NHẬT LOGIC TẠO TEST ==================
     public TestRes createTest(TestReq request) {
         int attempt = 0;
         while (true) {
             attempt++;
             try {
-                // each attempt runs inside its own transaction
                 return transactionTemplate.execute(status -> {
-                    // --- create Test ---
+                    // 1. Tạo Test Header
                     Test test = new Test();
                     Lesson lesson = lessonRepository.findById(request.getLessonId())
                             .orElseThrow(() -> new RuntimeException("Lesson not found"));
@@ -159,54 +261,53 @@ public class TestAdminService {
                     test.setCreatedAt(LocalDateTime.now());
                     test.setUpdatedAt(LocalDateTime.now());
 
-                    Test savedTest = testRepository.save(test); // persisted and has id
+                    Test savedTest = testRepository.save(test);
 
-                    // --- determine starting order for questions (max existing order) ---
+                    // 2. Tính toán order index bắt đầu
                     int maxQuestionOrder = testQuestionRepository.findMaxOrderInTestByTestId(savedTest.getId());
                     int nextQuestionOrder = maxQuestionOrder + 1;
 
+                    // 3. Duyệt qua danh sách câu hỏi
                     for (var qReq : request.getQuestions()) {
                         TestQuestion question = new TestQuestion();
                         question.setTest(savedTest);
-
-                        // System assigns orderInTest (no input from user)
                         question.setOrderInTest(nextQuestionOrder++);
-                        question.setQuestionType(TestQuestionType.valueOf(qReq.getQuestionType()));
+
+                        TestQuestionType type = TestQuestionType.valueOf(qReq.getQuestionType());
+                        question.setQuestionType(type);
+
+                        // Set các field chung
                         question.setStemType(StemType.valueOf(qReq.getStemType()));
                         question.setStemRefId(qReq.getStemRefId());
-                        question.setStemText(qReq.getStemText());
+                        //danh cho dang SENTENCE_HIDDEN_WORD
+                        question.setStemText(qReq.getStemText()); // Có thể bị override bên dưới tuỳ loại
                         question.setHiddenWord(qReq.getHiddenWord());
+
                         question.setDifficulty(1);
                         question.setMaxScore(qReq.getMaxScore());
                         question.setCreatedAt(LocalDateTime.now());
                         question.setUpdatedAt(LocalDateTime.now());
 
-                        // Options: assign orders starting from 1 for each new question
+                        // 4. Xử lý Options dựa trên Loại câu hỏi
                         List<TestOption> opts = new ArrayList<>();
-                        int optionOrder = 1;
-                        for (var oReq : qReq.getOptions()) {
-                            TestOption option = new TestOption();
-                            option.setQuestion(question);
-                            option.setContentType(ContentType.valueOf(oReq.getContentType()));
-                            option.setContentRefId(oReq.getContentRefId());
-                            option.setText(oReq.getText());
-                            option.setCorrect(oReq.isCorrect());
-                            option.setOrder(optionOrder++);
-                            if (oReq.getSide() != null) {
-                                option.setSide(Side.valueOf(oReq.getSide()));
-                            }
-                            option.setPairKey(oReq.getPairKey());
-                            option.setCreatedAt(LocalDateTime.now());
-                            option.setUpdatedAt(LocalDateTime.now());
-                            opts.add(option);
-                        }
-                        question.setOptions(opts);
 
-                        // Save question (cascade will save options if configured)
+                        switch (type) {
+                            case SENTENCE_HIDDEN_WORD ->
+                                    handleSentenceHiddenWord(question, qReq, opts);
+
+                            case WORD_TO_SENTENCE ->
+                                    handleWordToSentence(question, qReq, opts);
+
+                            default ->
+                                // Nhóm 5 loại cơ bản: Lấy options từ request
+                                    handleStandardOptions(question, qReq.getOptions(), opts);
+                        }
+
+                        question.setOptions(opts);
                         testQuestionRepository.save(question);
                     }
 
-                    // Build response DTO
+                    // 5. Build Response
                     TestRes res = new TestRes();
                     res.setId(savedTest.getId());
                     res.setLessonId(savedTest.getLessonTest().getId());
@@ -218,21 +319,133 @@ public class TestAdminService {
                     return res;
                 });
             } catch (DataIntegrityViolationException dive) {
-                // Likely a unique constraint violation on (test_id, orderInTest)
                 if (attempt >= MAX_RETRY) {
-                    throw new BadRequestException("Khong tao duoc test question (conflict orderIndex) sau " + MAX_RETRY + " lan thu.");
+                    throw new BadRequestException("Không tạo được test (lỗi conflict orderIndex) sau " + MAX_RETRY + " lần thử.");
                 }
-                // short backoff to reduce collision chance
-                try {
-                    Thread.sleep(RETRY_SLEEP_MS);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-                // then retry
+                try { Thread.sleep(RETRY_SLEEP_MS); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             } catch (Exception exception) {
-                // lỗi khác -> ném BadRequest
-                throw new BadRequestException("Khong tao duoc test: " + exception.getMessage());
+                exception.printStackTrace();
+                throw new BadRequestException("Không tạo được test: " + exception.getMessage());
             }
         }
+    }
+
+    // --- CÁC HÀM XỬ LÝ OPTION ---
+
+    // 1. Xử lý nhóm câu hỏi thường (Lấy từ DB do Admin chọn)
+    private void handleStandardOptions(TestQuestion question, List<TestOptionReq> optionReqs, List<TestOption> opts) {
+        if (optionReqs == null) return;
+
+        int optionOrder = 1;
+        for (var oReq : optionReqs) {
+            TestOption option = new TestOption();
+            option.setQuestion(question);
+
+            // Map dữ liệu từ request
+            if (oReq.getContentType() != null) {
+                option.setContentType(ContentType.valueOf(oReq.getContentType()));
+            }
+            option.setContentRefId(oReq.getContentRefId());
+//            option.setText(oReq.getText());
+            option.setCorrect(oReq.isCorrect());
+            option.setOrder(optionOrder++);
+
+            if (oReq.getSide() != null) {
+                option.setSide(Side.valueOf(oReq.getSide()));
+            }
+            option.setPairKey(oReq.getPairKey());
+
+            option.setCreatedAt(LocalDateTime.now());
+            option.setUpdatedAt(LocalDateTime.now());
+            opts.add(option);
+        }
+    }
+
+    // 2. Xử lý SENTENCE_HIDDEN_WORD (Hệ thống tự mask câu)
+    private void handleSentenceHiddenWord(TestQuestion question, TestQuestionReq qReq, List<TestOption> opts) {
+        String full = qReq.getStemText();   // Câu đầy đủ
+        String hidden = qReq.getHiddenWord(); // Từ cần ẩn
+
+        if (!containsLoose(full, hidden)) {
+            throw new BadRequestException("Từ ẩn '" + hidden + "' không có trong câu: " + full);
+        }
+
+        // Tạo câu bị ẩn (VD: "I ___ apples")
+        String masked = maskFirstOccurrence(full, hidden, "___");
+        question.setStemText(masked); // Lưu câu đã đục lỗ vào DB
+
+        // Tạo Option đúng (chứa từ bị ẩn)
+        TestOption option = new TestOption();
+        option.setQuestion(question);
+        option.setText(hidden); // Đáp án là từ bị ẩn
+        option.setCorrect(true);
+        option.setOrder(1);
+//        option.setContentType(ContentType.VOCAB); // Hoặc TEXT tuỳ logic FE
+        option.setCreatedAt(LocalDateTime.now());
+        option.setUpdatedAt(LocalDateTime.now());
+
+        opts.add(option);
+    }
+
+    // 3. Xử lý WORD_TO_SENTENCE (Hệ thống tự tách từ)
+    private void handleWordToSentence(TestQuestion question, com.iuh.WiseOwlEnglish_Backend.dto.request.TestQuestionReq qReq, List<TestOption> opts) {
+        String fullSentence = qReq.getStemText();
+        // Tách câu thành các token (giữ dấu câu)
+        List<String> tokens = tokenizeKeepPunct(fullSentence);
+
+        int pos = 1;
+        for (String tk : tokens) {
+            TestOption opt = new TestOption();
+            opt.setQuestion(question);
+            opt.setText(tk);
+            opt.setOrder(pos);       // Thứ tự xuất hiện
+            opt.setCorrectOrder(pos);// Thứ tự đúng (để chấm điểm)
+            opt.setCorrect(true);    // Trong bài xếp từ, tất cả thẻ đều là một phần của đáp án
+//            opt.setContentType(ContentType.TEXT);
+            opt.setCreatedAt(LocalDateTime.now());
+            opt.setUpdatedAt(LocalDateTime.now());
+
+            opts.add(opt);
+            pos++;
+        }
+    }
+
+    // --- CÁC HÀM UTILS (Helper) ---
+
+    // Tách câu thành từ, giữ lại dấu câu
+    private List<String> tokenizeKeepPunct(String sentence) {
+        if (sentence == null || sentence.isBlank()) return List.of();
+        // Chèn khoảng trắng quanh dấu câu để split
+        String spaced = sentence
+                .replaceAll("([.,!?;:])", " $1 ")
+                .replaceAll("([()\"“”‘’])", " $1 ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        String[] parts = spaced.split(" ");
+        List<String> tokens = new ArrayList<>();
+        for (String p : parts) {
+            if (!p.isBlank()) tokens.add(p);
+        }
+        return tokens;
+    }
+
+    // Che từ đầu tiên tìm thấy
+    private String maskFirstOccurrence(String sentence, String word, String placeholder) {
+        String regex = "(?i)" + Pattern.quote(word.trim());
+        return sentence.replaceFirst(regex, placeholder);
+    }
+
+    // Kiểm tra tồn tại (không phân biệt hoa thường/dấu)
+    private boolean containsLoose(String sentence, String word) {
+        String a = normalize(sentence);
+        String b = normalize(word);
+        return a.contains(b);
+    }
+
+    // Chuẩn hóa chuỗi (lowercase + bỏ dấu)
+    private String normalize(String s) {
+        if (s == null) return "";
+        String t = s.toLowerCase(Locale.ROOT).trim();
+        return Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
     }
 }

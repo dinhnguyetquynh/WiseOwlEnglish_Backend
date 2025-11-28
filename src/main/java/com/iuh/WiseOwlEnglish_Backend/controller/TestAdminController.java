@@ -4,6 +4,7 @@ import com.iuh.WiseOwlEnglish_Backend.dto.request.TestReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.TestRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonWithTestsRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.TestAdminByLessonRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.TestsOfLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.service.TestAdminService;
 import com.iuh.WiseOwlEnglish_Backend.service.TestService;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +20,8 @@ public class TestAdminController {
     private final TestAdminService testAdminService;
 
     @GetMapping("/get-all/{lessonId}")
-    public ResponseEntity<List<TestAdminByLessonRes>> getAllTestByLesson(@PathVariable long lessonId){
-        List<TestAdminByLessonRes> res = testAdminService.getTestsByLessonId(lessonId);
+    public ResponseEntity<TestsOfLessonRes> getAllTestByLesson(@PathVariable long lessonId){
+        TestsOfLessonRes res = testAdminService.getTestsByLessonId(lessonId);
         return ResponseEntity.ok(res);
     }
     //API CHO ADMIN
