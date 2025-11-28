@@ -580,7 +580,8 @@ public class GameServiceAdmin {
                 candidates = List.of(
                         GameType.PICTURE_WORD_MATCHING,
                         GameType.SOUND_WORD_MATCHING,
-                        GameType.PICTURE_SENTENCE_MATCHING
+                        GameType.PICTURE_SENTENCE_MATCHING,
+                        GameType.PICTURE4_WORD4_MATCHING
                 );
                 break;
             case 3, 4, 5:
@@ -588,7 +589,10 @@ public class GameServiceAdmin {
                         GameType.PICTURE_WORD_WRITING,
                         GameType.PICTURE4_WORD4_MATCHING,
                         GameType.SENTENCE_HIDDEN_WORD,
-                        GameType.WORD_TO_SENTENCE
+                        GameType.WORD_TO_SENTENCE,
+                        GameType.PICTURE_WORD_MATCHING,
+                        GameType.SOUND_WORD_MATCHING,
+                        GameType.PICTURE_SENTENCE_MATCHING
                 );
                 break;
             default:

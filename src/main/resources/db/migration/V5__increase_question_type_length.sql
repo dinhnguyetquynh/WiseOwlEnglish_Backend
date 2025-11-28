@@ -1,0 +1,1 @@
+ALTER TABLE test_question ALTER COLUMN question_type TYPE VARCHAR(50);

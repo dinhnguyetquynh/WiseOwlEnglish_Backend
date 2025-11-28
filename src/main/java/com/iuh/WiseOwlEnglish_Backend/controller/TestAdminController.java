@@ -37,4 +37,22 @@ public class TestAdminController {
         TestRes res = testAdminService.createTest(req);
         return ResponseEntity.ok(res);
     }
+    @PatchMapping("/update-status/{id}")
+    public ResponseEntity<String> updateTestStatus(
+            @PathVariable Long id,
+            @RequestParam boolean active
+    ) {
+        testAdminService.updateStatus(id, active);
+        return ResponseEntity.ok("Cập nhật trạng thái thành công");
+    }
+
+    /**
+     * API lấy danh sách loại câu hỏi phù hợp cho bài học
+     * Usage: GET /api/test-admin/question-types?lessonId=1
+     */
+    @GetMapping("/question-types")
+    public ResponseEntity<List<String>> getQuestionTypes(@RequestParam Long lessonId) {
+        List<String> types = testAdminService.getQuestionTypesByLesson(lessonId);
+        return ResponseEntity.ok(types);
+    }
 }

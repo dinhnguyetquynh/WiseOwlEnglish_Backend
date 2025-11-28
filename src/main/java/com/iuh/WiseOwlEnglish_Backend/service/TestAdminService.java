@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.text.Normalizer;
@@ -447,5 +448,42 @@ public class TestAdminService {
         if (s == null) return "";
         String t = s.toLowerCase(Locale.ROOT).trim();
         return Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+    }
+
+    @Transactional
+    public void updateStatus(Long testId, boolean isActive) {
+        Test test = testRepository.findById(testId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy bài kiểm tra với id: " + testId));
+
+        test.setActive(isActive);
+        test.setUpdatedAt(LocalDateTime.now());
+
+        testRepository.save(test);
+    }
+    public List<String> getQuestionTypesByLesson(Long lessonId) {
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy bài học với id: " + lessonId));
+
+        int gradeOrder = lesson.getGradeLevel().getOrderIndex();
+
+        // Danh sách chung cho lớp 1, 2
+        List<String> typesForGrade1And2 = List.of(
+                TestQuestionType.PICTURE_WORD_MATCHING.name(),
+                TestQuestionType.PICTURE4_WORD4_MATCHING.name(), // Đã thêm theo yêu cầu
+                TestQuestionType.SOUND_WORD_MATCHING.name(),
+                TestQuestionType.PICTURE_SENTENCE_MATCHING.name()
+        );
+
+        if (gradeOrder <= 2) {
+            return typesForGrade1And2;
+        } else {
+            // Lớp 3, 4, 5: Bao gồm 4 loại trên + 3 loại nâng cao
+            List<String> typesForUpperGrades = new ArrayList<>(typesForGrade1And2);
+            typesForUpperGrades.add(TestQuestionType.PICTURE_WORD_WRITING.name());
+            typesForUpperGrades.add(TestQuestionType.SENTENCE_HIDDEN_WORD.name());
+            typesForUpperGrades.add(TestQuestionType.WORD_TO_SENTENCE.name());
+
+            return typesForUpperGrades;
+        }
     }
 }

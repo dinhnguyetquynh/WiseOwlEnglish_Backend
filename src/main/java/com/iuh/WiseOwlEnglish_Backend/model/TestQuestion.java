@@ -37,7 +37,7 @@ public class TestQuestion {
     private Test test;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "question_type", nullable = false, length = 24)
+    @Column(name = "question_type", nullable = false, length = 50)
     private TestQuestionType questionType;
 
     // ---- Prompt (stem) chỉ 1 loại/câu ----

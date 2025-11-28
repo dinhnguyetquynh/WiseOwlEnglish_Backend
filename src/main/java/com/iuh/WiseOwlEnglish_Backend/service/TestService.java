@@ -472,24 +472,28 @@ public class TestService {
 
 
         List<Test> testList = testRepository.findByLessonTest_Id(lessonId);
-        if(testList==null){
-            throw new NotFoundException("Bài học này chưa có bài kiểm tra");
+        if (testList == null || testList.isEmpty()) {
+            return new ArrayList<>();
         }
 
         List<TestResByLesson> testResList = new ArrayList<>();
         for(Test test:testList){
-            TestResByLesson testRes = new TestResByLesson();
-            testRes.setId(test.getId());
-            testRes.setLessonId(test.getLessonTest().getId());
-            testRes.setTitle(test.getTitle());
-            testRes.setType(test.getTestType().toString());
-            testRes.setDescription(test.getDescription());
-            testRes.setDurationMin(test.getDurationMin());
-            testRes.setActive(test.getActive());
-            testResList.add(testRes);
+            if (Boolean.TRUE.equals(test.getActive()) && test.getDeletedAt() == null) {
+                TestResByLesson testRes = new TestResByLesson();
+                testRes.setId(test.getId());
+                testRes.setLessonId(test.getLessonTest().getId());
+                testRes.setTitle(test.getTitle());
+                testRes.setType(test.getTestType().toString());
+                testRes.setDescription(test.getDescription());
+                testRes.setDurationMin(test.getDurationMin());
+                testRes.setActive(test.getActive());
+                testResList.add(testRes);
+            }
+
         }
         return testResList;
     }
+
 
 
 
