@@ -7,6 +7,7 @@ import lombok.Data;
 public class TestOptionRes {
     private Long id;
     private String optionText;
+    private String imgUrl;
     @JsonProperty("isCorrect")
     private boolean isCorrect;
     private int position;

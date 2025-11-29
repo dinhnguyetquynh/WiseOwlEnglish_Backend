@@ -13,5 +13,6 @@ public class TestQuestionRes {
     private int difficult;
     private int maxScore;
     private int position;
+    private String hiddenWord;
     private List<TestOptionRes> options;
 }

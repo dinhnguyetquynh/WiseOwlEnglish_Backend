@@ -277,7 +277,7 @@ public class TestAdminService {
                         TestQuestionType type = TestQuestionType.valueOf(qReq.getQuestionType());
                         question.setQuestionType(type);
 
-                        // Set các field chung
+                        // Set các field chung: IMAGE, AUDIO, SENTENCE
                         question.setStemType(StemType.valueOf(qReq.getStemType()));
                         question.setStemRefId(qReq.getStemRefId());
                         //danh cho dang SENTENCE_HIDDEN_WORD

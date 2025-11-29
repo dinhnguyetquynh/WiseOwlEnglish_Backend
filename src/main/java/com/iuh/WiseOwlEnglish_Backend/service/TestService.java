@@ -24,6 +24,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.iuh.WiseOwlEnglish_Backend.enums.StemType.TEXT;
+
 @Service
 @RequiredArgsConstructor
 public class TestService {
@@ -42,109 +44,91 @@ public class TestService {
 
     private final TransactionTemplate transactionTemplate;
 
-//    private static final int MAX_RETRY = 3;
-//    private static final long RETRY_SLEEP_MS = 50L;
-//
-//    //ADMIN FUNCTIONALITY
-//    public TestRes createTest(TestReq request) {
-//        int attempt = 0;
-//        while (true) {
-//            attempt++;
-//            try {
-//                // each attempt runs inside its own transaction
-//                return transactionTemplate.execute(status -> {
-//                    // --- create Test ---
-//                    Test test = new Test();
-//                    Lesson lesson = lessonRepository.findById(request.getLessonId())
-//                            .orElseThrow(() -> new RuntimeException("Lesson not found"));
-//                    test.setLessonTest(lesson);
-//                    test.setActive(request.getActive());
-//                    test.setTitle(request.getTitle());
-//                    test.setTestType(TestType.valueOf(request.getType()));
-//                    test.setDescription(request.getDescription());
-//                    test.setDurationMin(request.getDurationMin());
-//                    test.setCreatedAt(LocalDateTime.now());
-//                    test.setUpdatedAt(LocalDateTime.now());
-//
-//                    Test savedTest = testRepository.save(test); // persisted and has id
-//
-//                    // --- determine starting order for questions (max existing order) ---
-//                    int maxQuestionOrder = testQuestionRepository.findMaxOrderInTestByTestId(savedTest.getId());
-//                    int nextQuestionOrder = maxQuestionOrder + 1;
-//
-//                    for (var qReq : request.getQuestions()) {
-//                        TestQuestion question = new TestQuestion();
-//                        question.setTest(savedTest);
-//
-//                        // System assigns orderInTest (no input from user)
-//                        question.setOrderInTest(nextQuestionOrder++);
-//                        question.setQuestionType(TestQuestionType.valueOf(qReq.getQuestionType()));
-//                        question.setStemType(StemType.valueOf(qReq.getStemType()));
-//                        question.setStemRefId(qReq.getStemRefId());
-//                        question.setStemText(qReq.getStemText());
-//                        question.setDifficulty(1);
-//                        question.setMaxScore(qReq.getMaxScore());
-//                        question.setCreatedAt(LocalDateTime.now());
-//                        question.setUpdatedAt(LocalDateTime.now());
-//
-//                        // Options: assign orders starting from 1 for each new question
-//                        List<TestOption> opts = new ArrayList<>();
-//                        int optionOrder = 1;
-//                        for (var oReq : qReq.getOptions()) {
-//                            TestOption option = new TestOption();
-//                            option.setQuestion(question);
-//                            option.setContentType(ContentType.valueOf(oReq.getContentType()));
-//                            option.setContentRefId(oReq.getContentRefId());
-//                            option.setText(oReq.getText());
-//                            option.setCorrect(oReq.isCorrect());
-//                            option.setOrder(optionOrder++);
-//                            if (oReq.getSide() != null) {
-//                                option.setSide(Side.valueOf(oReq.getSide()));
-//                            }
-//                            option.setPairKey(oReq.getPairKey());
-//                            option.setCreatedAt(LocalDateTime.now());
-//                            option.setUpdatedAt(LocalDateTime.now());
-//                            opts.add(option);
-//                        }
-//                        question.setOptions(opts);
-//
-//                        // Save question (cascade will save options if configured)
-//                        testQuestionRepository.save(question);
-//                    }
-//
-//                    // Build response DTO
-//                    TestRes res = new TestRes();
-//                    res.setId(savedTest.getId());
-//                    res.setLessonId(savedTest.getLessonTest().getId());
-//                    res.setActive(savedTest.getActive());
-//                    res.setTitle(savedTest.getTitle());
-//                    res.setType(savedTest.getTestType().toString());
-//                    res.setDescription(savedTest.getDescription());
-//                    res.setDurationMin(savedTest.getDurationMin());
-//                    return res;
-//                });
-//            } catch (DataIntegrityViolationException dive) {
-//                // Likely a unique constraint violation on (test_id, orderInTest)
-//                if (attempt >= MAX_RETRY) {
-//                    throw new BadRequestException("Khong tao duoc test question (conflict orderIndex) sau " + MAX_RETRY + " lan thu.");
-//                }
-//                // short backoff to reduce collision chance
-//                try {
-//                    Thread.sleep(RETRY_SLEEP_MS);
-//                } catch (InterruptedException e) {
-//                    Thread.currentThread().interrupt();
-//                }
-//                // then retry
-//            } catch (Exception exception) {
-//                // lỗi khác -> ném BadRequest
-//                throw new BadRequestException("Khong tao duoc test: " + exception.getMessage());
-//            }
-//        }
-//    }
 
     //lấy Test theo testId
-    public TestRes getTestById(Long id){
-        Test test = testRepository.findById(id).orElseThrow(()->new NotFoundException("Not found test: "+id));
+//    public TestRes getTestById(Long id){
+//        Test test = testRepository.findById(id).orElseThrow(()->new NotFoundException("Not found test: "+id));
+//        TestRes testRes = new TestRes();
+//        testRes.setId(test.getId());
+//        testRes.setLessonId(test.getLessonTest().getId());
+//        testRes.setTitle(test.getTitle());
+//        testRes.setType(test.getTestType().toString());
+//        testRes.setDescription(test.getDescription());
+//        testRes.setDurationMin(test.getDurationMin());
+//        testRes.setActive(test.getActive());
+//
+//        List<TestQuestion> testQuestionList = testQuestionRepository.findByTestIdOrderByOrderInTest(test.getId());
+//        List<TestQuestionRes> testQuestionRes = new ArrayList<>();
+//        for(TestQuestion question:testQuestionList){
+//            TestQuestionRes questionRes = new TestQuestionRes();
+//            questionRes.setId(question.getId());
+//            questionRes.setQuestionType(question.getQuestionType().toString());
+//            if(question.getStemType().equals(StemType.IMAGE)||question.getStemType().equals(StemType.AUDIO)){
+//                MediaAsset mediaAsset = mediaAssetRepository.findById(question.getStemRefId())
+//                        .orElseThrow(()-> new NotFoundException("Not found mediaAsset for test question :"+question.getStemRefId()));
+//                questionRes.setMediaUrl(mediaAsset.getUrl());
+//            }
+//            //check xem co StemText hay khong
+//            if(question.getStemText()==null){
+//                questionRes.setQuestionContent(null);
+//            }else{
+//                questionRes.setQuestionContent(question.getStemText());
+//            }
+//            questionRes.setDifficult(question.getDifficulty());
+//            questionRes.setMaxScore(question.getMaxScore());
+//            questionRes.setPosition(question.getOrderInTest());
+//            //set options cho question
+//            List<TestOption> testOptionList = testOptionRepository.findByQuestionIdOrderByOrder(question.getId());
+//            List<TestOptionRes> testOptionResList = new ArrayList<>();
+//            for(TestOption option:testOptionList){
+//                TestOptionRes optionRes = new TestOptionRes();
+//                optionRes.setId(option.getId());
+//                ContentType ct = option.getContentType(); // có thể null
+//
+//                if (ct == null) {
+//                    // nếu contentType null, fallback dùng text (hoặc xử lý khác tuỳ yêu cầu)
+//                    optionRes.setOptionText(option.getText());
+//                } else {
+//                    switch (ct) {
+//                        case VOCAB -> {
+//                            Vocabulary vocabulary = vocabularyRepository.findById(option.getContentRefId())
+//                                    .orElseThrow(() -> new NotFoundException("Not found vocab for test option: " + option.getContentRefId()));
+//                            optionRes.setOptionText(vocabulary.getTerm_en());
+//                        }
+//                        case SENTENCE -> {
+//                            Sentence sentence = sentenceRepository.findById(option.getContentRefId())
+//                                    .orElseThrow(() -> new NotFoundException("Not found sentence for test option: " + option.getContentRefId()));
+//                            optionRes.setOptionText(sentence.getSentence_en());
+//                        }
+//                        case IMAGE -> {
+//                            MediaAsset mediaAsset = mediaAssetRepository.findById(option.getContentRefId())
+//                                    .orElseThrow(() -> new NotFoundException("Not found media for test option: " + option.getContentRefId()));
+//                            optionRes.setOptionText(mediaAsset.getUrl());
+//                        }
+//                        default -> optionRes.setOptionText(option.getText());
+//                    }
+//                }
+//                optionRes.setCorrect(option.isCorrect());
+//                optionRes.setPosition(option.getOrder());
+//                if(option.getSide()==null){
+//                    optionRes.setSide(null);
+//                }else{
+//                    optionRes.setSide(option.getSide().toString());
+//                }
+//                optionRes.setPairKey(option.getPairKey());
+//                testOptionResList.add(optionRes);
+//            }
+//            questionRes.setOptions(testOptionResList);
+//            testQuestionRes.add(questionRes);
+//        }
+//        testRes.setQuestionRes(testQuestionRes);
+//        return testRes;
+//    }
+    // Lấy Test theo testId
+    public TestRes getTestById(Long id) {
+        Test test = testRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Not found test: " + id));
+
         TestRes testRes = new TestRes();
         testRes.setId(test.getId());
         testRes.setLessonId(test.getLessonTest().getId());
@@ -155,72 +139,78 @@ public class TestService {
         testRes.setActive(test.getActive());
 
         List<TestQuestion> testQuestionList = testQuestionRepository.findByTestIdOrderByOrderInTest(test.getId());
-        List<TestQuestionRes> testQuestionRes = new ArrayList<>();
-        for(TestQuestion question:testQuestionList){
+        List<TestQuestionRes> testQuestionResList = new ArrayList<>();
+
+        for (TestQuestion question : testQuestionList) {
             TestQuestionRes questionRes = new TestQuestionRes();
             questionRes.setId(question.getId());
             questionRes.setQuestionType(question.getQuestionType().toString());
-            if(question.getStemType().equals(StemType.IMAGE)||question.getStemType().equals(StemType.AUDIO)){
-                MediaAsset mediaAsset = mediaAssetRepository.findById(question.getStemRefId())
-                        .orElseThrow(()-> new NotFoundException("Not found mediaAsset for test question :"+question.getStemRefId()));
-                questionRes.setMediaUrl(mediaAsset.getUrl());
-            }
-            //check xem co StemText hay khong
-            if(question.getStemText()==null){
-                questionRes.setQuestionContent(null);
-            }else{
-                questionRes.setQuestionContent(question.getStemText());
-            }
             questionRes.setDifficult(question.getDifficulty());
             questionRes.setMaxScore(question.getMaxScore());
             questionRes.setPosition(question.getOrderInTest());
-            //set options cho question
+
+            // 1. Xử lý Stem (Thân câu hỏi: Ảnh/Audio/Text)
+            // Game SENTENCE_HIDDEN_WORD dùng StemType.IMAGE hoặc TEXT
+            if (question.getStemType() == StemType.IMAGE || question.getStemType() == StemType.AUDIO) {
+                if (question.getStemRefId() != null) {
+                    MediaAsset mediaAsset = mediaAssetRepository.findById(question.getStemRefId())
+                            .orElse(null);
+                    if (mediaAsset != null) {
+                        questionRes.setMediaUrl(mediaAsset.getUrl());
+                    }
+                }
+            }else if(question.getStemType()==StemType.SENTENCE){
+                Sentence sentence = sentenceRepository.findById(question.getStemRefId())
+                        .orElseThrow(()-> new NotFoundException("Khong tim thay sentence co id :"+question.getStemRefId()));
+                questionRes.setQuestionContent(sentence.getSentence_en());
+            }else{
+                questionRes.setQuestionContent(question.getStemText());
+            }
+            // 2. Xử lý Hidden Word (Quan trọng cho SENTENCE_HIDDEN_WORD)
+            questionRes.setHiddenWord(question.getHiddenWord());
+
+            // 3. Xử lý Options
             List<TestOption> testOptionList = testOptionRepository.findByQuestionIdOrderByOrder(question.getId());
             List<TestOptionRes> testOptionResList = new ArrayList<>();
-            for(TestOption option:testOptionList){
+
+            for (TestOption option : testOptionList) {
                 TestOptionRes optionRes = new TestOptionRes();
                 optionRes.setId(option.getId());
-                ContentType ct = option.getContentType(); // có thể null
+                optionRes.setCorrect(option.isCorrect());
+                optionRes.setPosition(option.getOrder());
+                optionRes.setSide(option.getSide() != null ? option.getSide().toString() : null);
+                optionRes.setPairKey(option.getPairKey());
 
+                // Xử lý Content của Option dựa trên ContentType
+                ContentType ct = option.getContentType();
                 if (ct == null) {
-                    // nếu contentType null, fallback dùng text (hoặc xử lý khác tuỳ yêu cầu)
+                    // Fallback cho các option cũ hoặc dạng Text đơn giản
                     optionRes.setOptionText(option.getText());
                 } else {
                     switch (ct) {
-                        case VOCAB -> {
-                            Vocabulary vocabulary = vocabularyRepository.findById(option.getContentRefId())
-                                    .orElseThrow(() -> new NotFoundException("Not found vocab for test option: " + option.getContentRefId()));
-                            optionRes.setOptionText(vocabulary.getTerm_en());
-                        }
-                        case SENTENCE -> {
-                            Sentence sentence = sentenceRepository.findById(option.getContentRefId())
-                                    .orElseThrow(() -> new NotFoundException("Not found sentence for test option: " + option.getContentRefId()));
-                            optionRes.setOptionText(sentence.getSentence_en());
-                        }
-                        case IMAGE -> {
-                            MediaAsset mediaAsset = mediaAssetRepository.findById(option.getContentRefId())
-                                    .orElseThrow(() -> new NotFoundException("Not found media for test option: " + option.getContentRefId()));
-                            optionRes.setOptionText(mediaAsset.getUrl());
-                        }
+                        case VOCAB -> vocabularyRepository.findById(option.getContentRefId())
+                                .ifPresent(v -> optionRes.setOptionText(v.getTerm_en()));
+
+                        case SENTENCE -> sentenceRepository.findById(option.getContentRefId())
+                                .ifPresent(s -> optionRes.setOptionText(s.getSentence_en()));
+
+                        case IMAGE -> mediaAssetRepository.findById(option.getContentRefId())
+                                .ifPresent(m -> optionRes.setImgUrl(m.getUrl()));
+
                         default -> optionRes.setOptionText(option.getText());
                     }
                 }
-                optionRes.setCorrect(option.isCorrect());
-                optionRes.setPosition(option.getOrder());
-                if(option.getSide()==null){
-                    optionRes.setSide(null);
-                }else{
-                    optionRes.setSide(option.getSide().toString());
-                }
-                optionRes.setPairKey(option.getPairKey());
                 testOptionResList.add(optionRes);
             }
             questionRes.setOptions(testOptionResList);
-            testQuestionRes.add(questionRes);
+            testQuestionResList.add(questionRes);
         }
-        testRes.setQuestionRes(testQuestionRes);
+
+        testRes.setQuestionRes(testQuestionResList);
         return testRes;
     }
+
+
 
     public SubmitTestRes submitAndGrade(Long learnerId, Long testId, SubmitTestReq req) {
         Test test = testRepository.findById(testId)
