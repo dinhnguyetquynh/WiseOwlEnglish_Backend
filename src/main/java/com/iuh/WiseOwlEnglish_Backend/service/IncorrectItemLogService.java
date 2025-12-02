@@ -32,26 +32,60 @@ public class IncorrectItemLogService {
      * Ghi log kết quả (ĐÚNG hoặc SAI) cho 1 item (Vocab/Sentence)
      * Đây là logic "cấn trừ"
      */
+//    @Transactional
+//    public void logItemAttempt(Long learnerId, Long lessonId, ItemType itemType, Long itemRefId, boolean isCorrect) {
+//        if (itemRefId == null) return; // Bỏ qua nếu không có ID
+//
+//        if (isCorrect) {
+//            // LÀM ĐÚNG: Xóa 1 bản ghi lỗi cũ nhất (trả nợ)
+//            logRepo.findFirstByLearnerProfile_IdAndLesson_IdAndItemTypeAndItemRefIdOrderByWrongAtAsc(
+//                    learnerId, lessonId, itemType, itemRefId
+//            ).ifPresent(logRepo::delete); // Nếu tìm thấy, xóa nó đi
+//
+//        } else {
+//            // LÀM SAI: Thêm 1 bản ghi lỗi mới (thêm nợ)
+//            IncorrectItemLog logEntry = IncorrectItemLog.builder()
+//                    .learnerProfile(learnerRepo.getReferenceById(learnerId))
+//                    .lesson(lessonRepo.getReferenceById(lessonId))
+//                    .itemType(itemType)
+//                    .itemRefId(itemRefId)
+//                    .wrongAt(LocalDateTime.now())
+//                    .build();
+//            logRepo.save(logEntry);
+//        }
+//    }
+
     @Transactional
     public void logItemAttempt(Long learnerId, Long lessonId, ItemType itemType, Long itemRefId, boolean isCorrect) {
         if (itemRefId == null) return; // Bỏ qua nếu không có ID
 
-        if (isCorrect) {
-            // LÀM ĐÚNG: Xóa 1 bản ghi lỗi cũ nhất (trả nợ)
-            logRepo.findFirstByLearnerProfile_IdAndLesson_IdAndItemTypeAndItemRefIdOrderByWrongAtAsc(
-                    learnerId, lessonId, itemType, itemRefId
-            ).ifPresent(logRepo::delete); // Nếu tìm thấy, xóa nó đi
+        try {
+            if (isCorrect) {
+                logRepo.findFirstByLearnerProfile_IdAndLesson_IdAndItemTypeAndItemRefIdOrderByWrongAtAsc(
+                        learnerId, lessonId, itemType, itemRefId
+                ).ifPresent(entity -> {
+                    try {
+                        logRepo.delete(entity);
+                    } catch (Exception ex) {
+                        log.error("Failed to delete old incorrect log id={} for learner={}, lesson={}", entity.getId(), learnerId, lessonId, ex);
+                    }
+                });
 
-        } else {
-            // LÀM SAI: Thêm 1 bản ghi lỗi mới (thêm nợ)
-            IncorrectItemLog logEntry = IncorrectItemLog.builder()
-                    .learnerProfile(learnerRepo.getReferenceById(learnerId))
-                    .lesson(lessonRepo.getReferenceById(lessonId))
-                    .itemType(itemType)
-                    .itemRefId(itemRefId)
-                    .wrongAt(LocalDateTime.now())
-                    .build();
-            logRepo.save(logEntry);
+            } else {
+                LearnerProfile learner = learnerRepo.findById(learnerId).orElse(null);
+                Lesson lesson = (lessonId == null) ? null : lessonRepo.findById(lessonId).orElse(null);
+
+                IncorrectItemLog logEntry = IncorrectItemLog.builder()
+                        .learnerProfile(learner)
+                        .lesson(lesson)
+                        .itemType(itemType)
+                        .itemRefId(itemRefId)
+                        .wrongAt(LocalDateTime.now())
+                        .build();
+                logRepo.save(logEntry);
+            }
+        } catch (Exception e) {
+            log.error("Failed to logItemAttempt learnerId={}, lessonId={}, itemType={}, itemRefId={}", learnerId, lessonId, itemType, itemRefId, e);
         }
     }
 
@@ -65,10 +99,15 @@ public class IncorrectItemLogService {
             if (question.getPromptType() == PromptType.IMAGE||question.getPromptType() ==PromptType.AUDIO) {
                 MediaAsset mediaAsset = mediaAssetRepository.findById(question.getPromptRefId())
                         .orElseThrow(()-> new NotFoundException("Khong tim thay media nao co id:"+question.getPromptRefId()));
-                if(mediaAsset.getVocabulary().getId()!=null){
-                    logItemAttempt(learnerId, lessonId, ItemType.VOCAB, mediaAsset.getVocabulary().getId(), isCorrect);
+                // --- FIX BUG NPE Ở ĐÂY ---
+                if (mediaAsset != null) {
+                    if (mediaAsset.getVocabulary() != null && mediaAsset.getVocabulary().getId() != null) {
+                        logItemAttempt(learnerId, lessonId, ItemType.VOCAB, mediaAsset.getVocabulary().getId(), isCorrect);
+                    }
+                    if (mediaAsset.getSentence() != null && mediaAsset.getSentence().getId() != null) {
+                        logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, mediaAsset.getSentence().getId(), isCorrect);
+                    }
                 }
-                    logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, mediaAsset.getSentence().getId(), isCorrect);
 
             } else if (question.getPromptType() == PromptType.SENTENCE) {
                 logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, question.getPromptRefId(), isCorrect);
@@ -92,30 +131,23 @@ public class IncorrectItemLogService {
     @Transactional
     public void logTestOptions(Long learnerId, Long lessonId, TestQuestion question, List<TestOption> options, boolean isCorrect) {
         try {
-            // 1. Log item từ Stem (thân câu hỏi)
-//            if (question.getStemType() == StemType.VOCAB) {
-//                logItemAttempt(learnerId, lessonId, ItemType.VOCAB, question.getStemRefId(), isCorrect);
-//            } else if (question.getStemType() == StemType.SENTENCE) {
-//                logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, question.getStemRefId(), isCorrect);
-//            }
-//
-//            for (TestOption opt : options) {
-//                if (opt.isCorrect()) {
-//                    if (opt.getContentType() == ContentType.VOCAB && opt.getContentRefId() != null) {
-//                        logItemAttempt(learnerId, lessonId, ItemType.VOCAB, opt.getContentRefId(), isCorrect);
-//                    } else if (opt.getContentType() == ContentType.SENTENCE && opt.getContentRefId() != null) {
-//                        logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, opt.getContentRefId(), isCorrect);
-//                    }
-//                }
-//            }
-            if (question.getStemType() == StemType.IMAGE||question.getStemType() == StemType.AUDIO) {
-                MediaAsset mediaAsset = mediaAssetRepository.findById(question.getStemRefId())
-                        .orElseThrow(()-> new NotFoundException("Khong tim thay media nao co id:"+question.getStemRefId()));
-                if(mediaAsset.getVocabulary().getId()!=null){
-                    logItemAttempt(learnerId, lessonId, ItemType.VOCAB, mediaAsset.getVocabulary().getId(), isCorrect);
-                }
-                logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, mediaAsset.getSentence().getId(), isCorrect);
 
+            if (question.getStemType() == StemType.IMAGE||question.getStemType() == StemType.AUDIO) {
+//                MediaAsset mediaAsset = mediaAssetRepository.findById(question.getStemRefId())
+//                        .orElseThrow(()-> new NotFoundException("Khong tim thay media nao co id:"+question.getStemRefId()));
+                if (question.getStemRefId() != null) {
+                    MediaAsset mediaAsset = mediaAssetRepository.findById(question.getStemRefId()).orElse(null);
+
+                    // --- FIX BUG NPE Ở ĐÂY ---
+                    if (mediaAsset != null) {
+                        if (mediaAsset.getVocabulary() != null && mediaAsset.getVocabulary().getId() != null) {
+                            logItemAttempt(learnerId, lessonId, ItemType.VOCAB, mediaAsset.getVocabulary().getId(), isCorrect);
+                        }
+                        if (mediaAsset.getSentence() != null && mediaAsset.getSentence().getId() != null) {
+                            logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, mediaAsset.getSentence().getId(), isCorrect);
+                        }
+                    }
+                }
             } else if (question.getStemType() == StemType.SENTENCE) {
                 logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, question.getStemRefId(), isCorrect);
             }

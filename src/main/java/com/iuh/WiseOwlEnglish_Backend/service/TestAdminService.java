@@ -11,14 +11,8 @@ import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.TestsOfLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.*;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
-import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
-import com.iuh.WiseOwlEnglish_Backend.model.Test;
-import com.iuh.WiseOwlEnglish_Backend.model.TestOption;
-import com.iuh.WiseOwlEnglish_Backend.model.TestQuestion;
-import com.iuh.WiseOwlEnglish_Backend.repository.LessonRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.TestAttemptRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.TestQuestionRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.TestRepository;
+import com.iuh.WiseOwlEnglish_Backend.model.*;
+import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,6 +34,7 @@ public class TestAdminService {
     private final LessonRepository lessonRepository;
     private final TransactionTemplate transactionTemplate;
     private final TestQuestionRepository testQuestionRepository;
+    private final SentenceRepository sentenceRepository; // 2. Inject thêm Repository này
 
     public TestsOfLessonRes getTestsByLessonId(Long lessonId) {
         if (lessonId == null) {
@@ -390,9 +385,10 @@ public class TestAdminService {
 
     // 3. Xử lý WORD_TO_SENTENCE (Hệ thống tự tách từ)
     private void handleWordToSentence(TestQuestion question, com.iuh.WiseOwlEnglish_Backend.dto.request.TestQuestionReq qReq, List<TestOption> opts) {
-        String fullSentence = qReq.getStemText();
+        Sentence sentence = sentenceRepository.findById(question.getStemRefId())
+                .orElseThrow(()-> new NotFoundException("Khong tim thay sentence co id trong luc tao option cho WTS:"+question.getStemRefId()));
         // Tách câu thành các token (giữ dấu câu)
-        List<String> tokens = tokenizeKeepPunct(fullSentence);
+        List<String> tokens = tokenizeKeepPunct(sentence.getSentence_en());
 
         int pos = 1;
         for (String tk : tokens) {
