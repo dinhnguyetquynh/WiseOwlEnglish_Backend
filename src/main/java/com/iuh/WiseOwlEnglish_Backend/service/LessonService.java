@@ -40,8 +40,8 @@ public class LessonService {
 
         Optional<Long> gradeId = grogressRepo.findGradeLevelIdByLearnerAndStatusAndPrimaryTrue(learnerProfileId, ProgressStatus.IN_PROGRESS);
 
-        // SỬA: Chỉ lấy bài học chưa bị xoá để tính toán hiển thị
-        List<Lesson> lessons = lessonRepo.findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(gradeId.orElse(1L));
+        // SỬA: Chỉ lấy bài học chưa bị xoá va dang active để tính toán hiển thị
+        List<Lesson> lessons = lessonRepo.findAllByGradeLevel_IdAndActiveTrueAndDeletedAtIsNullOrderByOrderIndexAsc(gradeId.orElse(1L));
         // 4) Lấy tiến độ theo batch
         List<Long> lessonIds = lessons.stream().map(Lesson::getId).toList();
         Map<Long, Integer> percentMap = lessonProgressRepo

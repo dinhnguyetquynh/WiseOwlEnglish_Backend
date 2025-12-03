@@ -20,4 +20,8 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
 
     // 2. Cho Admin: Lấy tất cả lesson (kể cả chưa active) nhưng Chưa xoá
     List<Lesson> findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(Long gradeLevelId);
+
+    // Tìm index lớn nhất dựa trên gradeLevelId. Nếu chưa có bài nào thì trả về 0.
+    @Query("SELECT COALESCE(MAX(l.orderIndex), 0) FROM Lesson l WHERE l.gradeLevel.id = :gradeLevelId")
+    Integer findMaxOrderIndexByGradeLevelId(@Param("gradeLevelId") Long gradeLevelId);
 }

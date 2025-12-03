@@ -56,4 +56,12 @@ public class LessonAdminController {
 
         return ResponseEntity.ok("Xoá bài học thành công (Hệ thống tự động chọn Xoá cứng hoặc Xoá mềm)");
     }
+    @PatchMapping("/{id}/active")
+    public ResponseEntity<CreateLessonRes> updateLessonStatus(
+            @PathVariable Long id,
+            @RequestParam boolean isActive) {
+
+        CreateLessonRes result = adminService.updateLessonActiveStatus(id, isActive);
+        return ResponseEntity.ok(result);
+    }
 }

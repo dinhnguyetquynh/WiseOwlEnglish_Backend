@@ -30,10 +30,32 @@ public class LessonAdminService {
 
     @Transactional
     public CreateLessonRes createLesson(CreateLessonReq req){
+        // 1. Tính toán orderIndex mới tự động
+        // Lấy index lớn nhất hiện tại của Grade này
+        Integer currentMaxIndex = lessonRepository.findMaxOrderIndexByGradeLevelId(req.getGradeLevelId());
+        // Index mới sẽ là max + 1
+        int newOrderIndex = currentMaxIndex + 1;
         Lesson lesson = toEntity(req);
+        lesson.setOrderIndex(newOrderIndex);
+        lesson.setActive(false);
         Lesson createdLesson = lessonRepository.save(lesson);
         CreateLessonRes res = toDTO(createdLesson);
         return res;
+    }
+    private Lesson toEntity(CreateLessonReq req){
+        Lesson lesson = new Lesson();
+        lesson.setUnitName(req.getUnitNumber());
+        lesson.setLessonName(req.getUnitName());
+//        lesson.setOrderIndex(req.getOrderIndex());
+//        lesson.setActive(false);
+        lesson.setCreatedAt(LocalDateTime.now());
+        lesson.setUpdatedAt(LocalDateTime.now());
+        lesson.setMascot(req.getUrlMascot());
+
+        GradeLevel gradeLevel = gradeLevelRepository.findById(req.getGradeLevelId())
+                .orElseThrow(()-> new NotFoundException("Khong tim thay grade level :" + req.getGradeLevelId()));
+        lesson.setGradeLevel(gradeLevel);
+        return lesson;
     }
 
     private CreateLessonRes toDTO(Lesson lesson){
@@ -49,21 +71,7 @@ public class LessonAdminService {
         return res;
     }
 
-    private Lesson toEntity(CreateLessonReq req){
-        Lesson lesson = new Lesson();
-        lesson.setUnitName(req.getUnitNumber());
-        lesson.setLessonName(req.getUnitName());
-        lesson.setOrderIndex(req.getOrderIndex());
-        lesson.setActive(req.isActive());
-        lesson.setCreatedAt(LocalDateTime.now());
-        lesson.setUpdatedAt(LocalDateTime.now());
-        lesson.setMascot(req.getUrlMascot());
 
-        GradeLevel gradeLevel = gradeLevelRepository.findById(req.getGradeLevelId())
-                .orElseThrow(()-> new NotFoundException("Khong tim thay grade level :" + req.getGradeLevelId()));
-        lesson.setGradeLevel(gradeLevel);
-        return lesson;
-    }
 
     public List<LessonRes> getListLessonByGradeId(long gradeId){
         List<Lesson> lessonList = lessonRepository.findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(gradeId);
@@ -184,6 +192,22 @@ public class LessonAdminService {
         System.out.println("Đã SOFT DELETE bài học ID: " + lesson.getId());
     }
 
+    //UPDATE ACTIVE CUA BAI HOC
+    @Transactional
+    public CreateLessonRes updateLessonActiveStatus(Long lessonId, boolean isActive) {
+        // 1. Tìm bài học, nếu không thấy thì báo lỗi
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy bài học với ID: " + lessonId));
 
+        // 2. Cập nhật trạng thái
+        lesson.setActive(isActive);
+
+        // 3. Cập nhật thời gian chỉnh sửa (quan trọng để tracking)
+        lesson.setUpdatedAt(LocalDateTime.now());
+
+        // 4. Lưu và trả về kết quả
+        Lesson updatedLesson = lessonRepository.save(lesson);
+        return toDTO(updatedLesson);
+    }
 
 }

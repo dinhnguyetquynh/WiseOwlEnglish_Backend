@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.dto.respone;
 
+import com.iuh.WiseOwlEnglish_Backend.dto.request.PairDTO;
 import lombok.Data;
 
 import java.util.List;
@@ -13,5 +14,8 @@ public class QuestionResultRes {
     private Integer maxScore;
     private Long selectedOptionId;
     private List<Long> selectedOptionIds;
-    private List<Long> correctOptionIds; // đây là
+    private List<Long> correctOptionIds;
+    private String textInput; // Lưu câu trả lời dạng text của user
+    private List<Long> userSequence;    // Cho Word To Sentence
+    private List<PairDTO> userPairs;    // Cho Picture Match Word
 }

@@ -250,9 +250,16 @@ public class TestService {
                     if (a != null) {
                         resultRes.setSelectedOptionId(a.getOptionId());
                         resultRes.setSelectedOptionIds(a.getOptionIds()); // nếu có dùng MULTI_SELECT
+                        resultRes.setTextInput(a.getTextInput());
+
+                        resultRes.setUserSequence(a.getSequence());
+                        resultRes.setUserPairs(a.getPairs());
                     } else {
                         resultRes.setSelectedOptionId(null);
                         resultRes.setSelectedOptionIds(null);
+                        resultRes.setTextInput(null);
+                        resultRes.setUserSequence(null);
+                        resultRes.setUserPairs(null);
                     }
 
                     resultRes.setCorrectOptionIds(gr.correctOptionIds() == null ? List.of() : gr.correctOptionIds());
