@@ -8,13 +8,10 @@ import com.iuh.WiseOwlEnglish_Backend.service.SentenceAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/sentences")
+@RequestMapping("/api/admin/sentences")
 @RequiredArgsConstructor
 public class SentenceAdminController {
     private final SentenceAdminService adminService;
@@ -23,5 +20,10 @@ public class SentenceAdminController {
     public ResponseEntity<SentenceAdminRes> createSentence(@RequestBody CreateSentenceReq req){
         SentenceAdminRes res = adminService.createSentence(req);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
+    }
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<String> deleteSentence(@PathVariable Long id) {
+        String message = adminService.deleteSentence(id);
+        return ResponseEntity.ok(message);
     }
 }

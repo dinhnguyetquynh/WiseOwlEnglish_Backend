@@ -3,15 +3,13 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateSentenceReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.SentenceAdminRes;
-import com.iuh.WiseOwlEnglish_Backend.enums.MediaType;
+import com.iuh.WiseOwlEnglish_Backend.enums.*;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
 import com.iuh.WiseOwlEnglish_Backend.model.MediaAsset;
 import com.iuh.WiseOwlEnglish_Backend.model.Sentence;
-import com.iuh.WiseOwlEnglish_Backend.repository.LessonRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.MediaAssetRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.SentenceRepository;
+import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -30,6 +28,14 @@ public class SentenceAdminService {
     private final MediaAssetRepository mediaAssetRepository;
 
     private final TransactionTemplate transactionTemplate;
+
+    private final ContentProgressRepository contentProgressRepo;
+    private final IncorrectItemLogRepository incorrectItemLogRepo;
+
+    private final GameQuestionRepository gameQuestionRepo;
+    private final GameOptionRepository gameOptionRepo;
+    private final TestQuestionRepository testQuestionRepo;
+    private final TestOptionRepository testOptionRepo;
 
     private static final int MAX_RETRY = 5;        // tăng retry nếu muốn
     private static final long RETRY_SLEEP_MS = 80; // backoff ngắn
@@ -151,6 +157,55 @@ public class SentenceAdminService {
                 // Lỗi khác (ví dụ dữ liệu thiếu, validation...) -> ném ra luôn
                 throw ex;
             }
+        }
+    }
+    @Transactional
+    public String deleteSentence(Long sentenceId) {
+        // 1. Tìm Sentence
+        Sentence sentence = sentenceRepository.findById(sentenceId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy Sentence với id: " + sentenceId));
+
+        // 2. CHECK RÀNG BUỘC CẤU TRÚC (GAME & TEST)
+
+        // Game
+        if (gameQuestionRepo.existsByPromptTypeAndPromptRefIdAndDeletedAtIsNull(PromptType.SENTENCE, sentenceId)) {
+            throw new BadRequestException("Không thể xóa: Câu này đang là Prompt trong Game.");
+        }
+        if (gameOptionRepo.existsByContentTypeAndContentRefIdAndDeletedAtIsNull(ContentType.SENTENCE, sentenceId)) {
+            throw new BadRequestException("Không thể xóa: Câu này đang là Option trong Game.");
+        }
+
+        // Test
+        if (testQuestionRepo.existsByStemTypeAndStemRefId(StemType.SENTENCE, sentenceId)) {
+            throw new BadRequestException("Không thể xóa: Câu này đang là Stem trong Test.");
+        }
+        if (testOptionRepo.existsByContentTypeAndContentRefId(ContentType.SENTENCE, sentenceId)) {
+            throw new BadRequestException("Không thể xóa: Câu này đang là Option trong Test.");
+        }
+
+        // 3. CHECK RÀNG BUỘC NGƯỜI HỌC
+        boolean hasLearned = contentProgressRepo.existsByItemTypeAndItemRefId(ItemType.SENTENCE, sentenceId);
+        boolean hasErrorLog = incorrectItemLogRepo.existsByItemTypeAndItemRefId(ItemType.SENTENCE, sentenceId);
+
+        if (hasLearned || hasErrorLog) {
+            // === XÓA MỀM ===
+            LocalDateTime now = LocalDateTime.now();
+            sentence.setDeletedAt(now);
+
+            if (sentence.getMediaAssets() != null) {
+                for (MediaAsset media : sentence.getMediaAssets()) {
+                    if (media.getDeletedAt() == null) {
+                        media.setDeletedAt(now);
+                        mediaAssetRepository.save(media);
+                    }
+                }
+            }
+            sentenceRepository.save(sentence);
+            return "Soft Deleted: Câu đã được ẩn vì có người học.";
+        } else {
+            // === XÓA CỨNG ===
+            sentenceRepository.delete(sentence);
+            return "Hard Deleted: Câu đã được xóa vĩnh viễn.";
         }
     }
 

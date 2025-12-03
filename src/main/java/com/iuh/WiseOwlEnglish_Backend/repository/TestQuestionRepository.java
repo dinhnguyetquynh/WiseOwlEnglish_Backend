@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.repository;
 
+import com.iuh.WiseOwlEnglish_Backend.enums.StemType;
 import com.iuh.WiseOwlEnglish_Backend.model.TestQuestion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -17,5 +18,8 @@ public interface TestQuestionRepository extends JpaRepository<TestQuestion, Long
 
     @Query("SELECT COALESCE(MAX(q.orderInTest), 0) FROM TestQuestion q WHERE q.test.id = :testId")
     int findMaxOrderInTestByTestId(@Param("testId") Long testId);
+
+    // Kiểm tra xem Vocab/Sentence có đang được dùng làm Stem (đề bài) không
+    boolean existsByStemTypeAndStemRefId(StemType stemType, Long stemRefId);
 
 }

@@ -1,6 +1,7 @@
 package com.iuh.WiseOwlEnglish_Backend.repository;
 
 import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
+import com.iuh.WiseOwlEnglish_Backend.enums.PromptType;
 import com.iuh.WiseOwlEnglish_Backend.model.GameQuestion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -32,4 +33,7 @@ public interface GameQuestionRepository extends JpaRepository<GameQuestion,Long>
 
     // ✅ MỚI: Chỉ lấy câu hỏi CHƯA BỊ XÓA và sắp xếp theo thứ tự
     List<GameQuestion> findByGameIdAndDeletedAtIsNullOrderByPositionAsc(Long gameId);
+
+    // Kiểm tra xem Vocab/Sentence có đang được dùng làm Prompt (đề bài) không
+    boolean existsByPromptTypeAndPromptRefIdAndDeletedAtIsNull(PromptType promptType, Long promptRefId);
 }

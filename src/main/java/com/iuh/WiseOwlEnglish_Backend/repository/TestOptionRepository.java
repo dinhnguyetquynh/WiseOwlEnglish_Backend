@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.repository;
 
+import com.iuh.WiseOwlEnglish_Backend.enums.ContentType;
 import com.iuh.WiseOwlEnglish_Backend.model.TestOption;
 import org.hibernate.sql.ast.tree.expression.JdbcParameter;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,4 +24,7 @@ public interface TestOptionRepository extends JpaRepository<TestOption, Long> {
         ORDER BY array_position(:ids, t.id)
     """, nativeQuery = true)
     List<Long> findContentRefIdsOrderByInput(@Param("ids") Long[] ids);
+
+    // Kiểm tra xem Vocab/Sentence có đang được dùng làm Option (đáp án) không
+    boolean existsByContentTypeAndContentRefId(ContentType contentType, Long contentRefId);
 }

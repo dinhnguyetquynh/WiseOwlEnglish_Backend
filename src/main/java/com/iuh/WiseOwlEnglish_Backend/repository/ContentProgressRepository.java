@@ -37,4 +37,7 @@ public interface ContentProgressRepository extends JpaRepository<ContentProgress
             @Param("status") ItemStatus status,
             @Param("gameTypes") Collection<GameType> gameTypes
     );
+
+    // Thêm hàm này: Kiểm tra xem có bất kỳ ai đã học item này chưa
+    boolean existsByItemTypeAndItemRefId(ItemType itemType, Long itemRefId);
 }

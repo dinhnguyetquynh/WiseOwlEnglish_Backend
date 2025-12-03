@@ -2,15 +2,13 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.CreateVocabReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.VocabRes;
-import com.iuh.WiseOwlEnglish_Backend.enums.MediaType;
+import com.iuh.WiseOwlEnglish_Backend.enums.*;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
 import com.iuh.WiseOwlEnglish_Backend.model.MediaAsset;
 import com.iuh.WiseOwlEnglish_Backend.model.Vocabulary;
-import com.iuh.WiseOwlEnglish_Backend.repository.LessonRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.MediaAssetRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.VocabularyRepository;
+import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -28,6 +26,14 @@ public class VocabServiceAdmin {
     private final LessonRepository lessonRepository;
     private final MediaAssetRepository mediaAssetRepository;
     private final TransactionTemplate transactionTemplate;
+
+    private final ContentProgressRepository contentProgressRepo;
+    private final IncorrectItemLogRepository incorrectItemLogRepo;
+
+    private final GameQuestionRepository gameQuestionRepo;
+    private final GameOptionRepository gameOptionRepo;
+    private final TestQuestionRepository testQuestionRepo;
+    private final TestOptionRepository testOptionRepo;
 
     private static final int MAX_RETRY = 5;
     private static final long RETRY_SLEEP_MS = 80L;
@@ -154,4 +160,61 @@ public class VocabServiceAdmin {
             }
         }
     }
+    @Transactional
+    public String deleteVocab(Long vocabId) {
+        // 1. Tìm Vocabulary
+        Vocabulary vocab = vocabularyRepository.findById(vocabId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy Vocabulary với id: " + vocabId));
+
+        // 2. [LOGIC MỚI] CHECK TRẠNG THÁI BÀI HỌC (LESSON STATUS)
+        Lesson lesson = vocab.getLessonVocabulary();
+        if (lesson != null && Boolean.TRUE.equals(lesson.isActive())) {
+            throw new BadRequestException(
+                    "Không thể xóa từ vựng khi bài học đang KÍCH HOẠT (Public). " +
+                            "Vui lòng tắt kích hoạt bài học hoặc xóa toàn bộ bài học."
+            );
+        }
+
+        // 3. CHECK RÀNG BUỘC CẤU TRÚC (GAME & TEST)
+        // Dù bài học chưa active, vẫn phải chặn nếu từ này đã được gán vào Game/Test (để tránh lỗi config)
+        if (gameQuestionRepo.existsByPromptTypeAndPromptRefIdAndDeletedAtIsNull(PromptType.VOCAB, vocabId) ||
+                gameOptionRepo.existsByContentTypeAndContentRefIdAndDeletedAtIsNull(ContentType.VOCAB, vocabId)) {
+            throw new BadRequestException("Không thể xóa: Từ vựng này đang được sử dụng trong Game.");
+        }
+
+        if (testQuestionRepo.existsByStemTypeAndStemRefId(StemType.VOCAB, vocabId) ||
+                testOptionRepo.existsByContentTypeAndContentRefId(ContentType.VOCAB, vocabId)) {
+            throw new BadRequestException("Không thể xóa: Từ vựng này đang được sử dụng trong Test.");
+        }
+
+        // 4. XỬ LÝ XÓA (KHI BÀI HỌC CHƯA ACTIVE VÀ CHƯA DÙNG TRONG GAME/TEST)
+
+        // Kiểm tra xem Admin có từng test thử hoặc người dùng cũ (trước khi bài học bị tắt active) đã học chưa
+        boolean hasLearned = contentProgressRepo.existsByItemTypeAndItemRefId(ItemType.VOCAB, vocabId);
+        boolean hasErrorLog = incorrectItemLogRepo.existsByItemTypeAndItemRefId(ItemType.VOCAB, vocabId);
+
+        if (hasLearned || hasErrorLog) {
+            // === XÓA MỀM (Soft Delete) ===
+            // Case này hiếm xảy ra nếu quy trình chuẩn, nhưng vẫn giữ để an toàn dữ liệu cũ
+            LocalDateTime now = LocalDateTime.now();
+            vocab.setDeletedAt(now);
+
+            if (vocab.getMediaAssets() != null) {
+                for (MediaAsset media : vocab.getMediaAssets()) {
+                    if (media.getDeletedAt() == null) {
+                        media.setDeletedAt(now);
+                        mediaAssetRepository.save(media);
+                    }
+                }
+            }
+            vocabularyRepository.save(vocab);
+            return "Soft Deleted: Từ vựng đã được ẩn (do có dữ liệu lịch sử).";
+        } else {
+            // === XÓA CỨNG (Hard Delete) ===
+            // Đây là trường hợp phổ biến nhất khi Admin đang soạn bài
+            vocabularyRepository.delete(vocab);
+            return "Hard Deleted: Từ vựng đã được xóa vĩnh viễn.";
+        }
+    }
+
 }

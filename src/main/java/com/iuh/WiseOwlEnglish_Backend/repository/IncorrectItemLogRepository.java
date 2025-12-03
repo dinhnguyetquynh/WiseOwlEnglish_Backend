@@ -38,4 +38,7 @@ public interface IncorrectItemLogRepository extends JpaRepository<IncorrectItemL
             ItemType itemType,
             Long itemRefId
     );
+
+    // Thêm hàm này: Kiểm tra xem có bất kỳ log lỗi nào của item này không
+    boolean existsByItemTypeAndItemRefId(ItemType itemType, Long itemRefId);
 }

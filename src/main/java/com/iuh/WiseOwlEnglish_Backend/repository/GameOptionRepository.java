@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.repository;
 
+import com.iuh.WiseOwlEnglish_Backend.enums.ContentType;
 import com.iuh.WiseOwlEnglish_Backend.model.GameOption;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,4 +20,8 @@ public interface GameOptionRepository extends JpaRepository<GameOption,Long> {
 
     // ✅ MỚI: Chỉ lấy option CHƯA BỊ XÓA và sắp xếp
     List<GameOption> findByGameQuestionIdAndDeletedAtIsNullOrderByPositionAsc(Long questionId);
+    // Kiểm tra xem Vocab/Sentence có đang được dùng làm Option (đáp án) không
+    boolean existsByContentTypeAndContentRefIdAndDeletedAtIsNull(ContentType contentType, Long contentRefId);
+
+
 }
