@@ -15,6 +15,7 @@ import com.iuh.WiseOwlEnglish_Backend.model.*;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -238,6 +239,7 @@ public class TestAdminService {
 //        }
 //    }
     // ================== CẬP NHẬT LOGIC TẠO TEST ==================
+    @CacheEvict(value = "lessonTotals", key = "#request.lessonId + '_testquestion'")
     public TestRes createTest(TestReq request) {
         int attempt = 0;
         while (true) {
@@ -480,6 +482,43 @@ public class TestAdminService {
             typesForUpperGrades.add(TestQuestionType.WORD_TO_SENTENCE.name());
 
             return typesForUpperGrades;
+        }
+    }
+    @Transactional
+    public String deleteTest(Long testId) {
+        // 1. Tìm Test
+        Test test = testRepository.findById(testId)
+                .orElseThrow(() -> new NotFoundException("Test not found with id: " + testId));
+
+        // 2. Kiểm tra điều kiện
+        // Lesson chứa test có đang active không?
+        boolean isLessonActive = test.getLessonTest().isActive();
+        // Test đã có ai làm chưa?
+        boolean hasAttempts = attemptRepository.existsByTest_Id(testId);
+
+        // 3. Phân nhánh xử lý
+        if (!isLessonActive && !hasAttempts) {
+            // === TRƯỜNG HỢP 1: XOÁ CỨNG (HARD DELETE) ===
+            // Lesson chưa active VÀ chưa ai làm bài -> Dữ liệu rác -> Xoá sạch
+
+            // Do Test có cascade = CascadeType.ALL với questions
+            // và TestQuestion có cascade = CascadeType.ALL với options
+            // -> Xoá Test sẽ tự động xoá hết câu hỏi và đáp án liên quan.
+            testRepository.delete(test);
+
+            return "Đã xoá vĩnh viễn Test (Hard Delete) vì chưa có dữ liệu người dùng.";
+        } else {
+            // === TRƯỜNG HỢP 2: XOÁ MỀM (SOFT DELETE) ===
+            // Lesson đang active HOẶC đã có người làm -> Phải giữ lại để thống kê -> Ẩn đi
+
+            test.setDeletedAt(LocalDateTime.now());
+            test.setActive(false);
+
+            // Lưu ý: TestQuestion hiện tại chưa có field deletedAt nên ta chỉ soft delete cấp cha (Test).
+            // Các API lấy câu hỏi cần đảm bảo check test.deletedAt hoặc test.isActive.
+
+            testRepository.save(test);
+            return "Đã xoá mềm Test (Soft Delete) để bảo toàn lịch sử người làm bài.";
         }
     }
 }

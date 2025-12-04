@@ -82,6 +82,7 @@ public interface GameAttemptRepository extends JpaRepository<GameAttempt, Long> 
             ") t")
     long countUsersWithScoreGreaterThan(@Param("score") long score);
 
-
+    //Kiểm tra xem Game đã có ai chơi chưa
+    boolean existsByGame_Id(Long gameId);
 
 }

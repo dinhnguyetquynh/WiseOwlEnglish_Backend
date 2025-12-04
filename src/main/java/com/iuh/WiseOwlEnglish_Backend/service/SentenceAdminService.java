@@ -11,6 +11,7 @@ import com.iuh.WiseOwlEnglish_Backend.model.MediaAsset;
 import com.iuh.WiseOwlEnglish_Backend.model.Sentence;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,6 +65,7 @@ public class SentenceAdminService {
      * Tạo Sentence: mỗi attempt sẽ chạy trong 1 transaction riêng (TransactionTemplate).
      * Nếu có lỗi DataIntegrityViolationException (ví dụ trùng unique orderIndex), sẽ retry.
      */
+    @CacheEvict(value = "lessonTotals", key = "#req.lessonId + '_sentence'")
     public SentenceAdminRes createSentence(CreateSentenceReq req) {
         Lesson lesson = lessonRepository.findById(req.getLessonId())
                 .orElseThrow(() -> new NotFoundException("Khong tim thay lesson: " + req.getLessonId()));

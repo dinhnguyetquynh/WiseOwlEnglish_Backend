@@ -128,5 +128,11 @@ public class GameController {
     public ResponseEntity<GameRes> updateGame(@PathVariable Long id, @RequestBody GameReq req) {
         return ResponseEntity.ok(gameServiceAdmin.updateGame(id, req));
     }
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<String> deleteGame(@PathVariable Long id) {
+        String message = gameServiceAdmin.deleteGame(id);
+        return ResponseEntity.ok(message);
+    }
+
 
 }

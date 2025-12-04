@@ -13,7 +13,13 @@ import java.util.List;
 public interface TestQuestionRepository extends JpaRepository<TestQuestion, Long> {
     @Query("SELECT tq FROM TestQuestion tq WHERE tq.test.id = :testId ORDER BY tq.orderInTest ASC")
     List<TestQuestion> findByTestIdOrderByOrderInTest(@Param("testId") Long testId);
-    @Query("SELECT COUNT(tq) FROM TestQuestion tq WHERE tq.test.lessonTest.id = :lessonId")
+
+    // 👇 CẬP NHẬT: Chỉ đếm câu hỏi của Test Active và chưa xoá
+    @Query("SELECT COUNT(tq) FROM TestQuestion tq " +
+            "JOIN tq.test t " +
+            "WHERE t.lessonTest.id = :lessonId " +
+            "AND t.active = true " +         // Test đang bật
+            "AND t.deletedAt IS NULL")       // Test chưa xoá
     long countByLessonId(@Param("lessonId") Long lessonId);
 
     @Query("SELECT COALESCE(MAX(q.orderInTest), 0) FROM TestQuestion q WHERE q.test.id = :testId")

@@ -138,7 +138,12 @@ public class GameService {
 
                     optionRes.setId(option.getId());
                     optionRes.setQuestionId(gameQuestion.getId());
-                    optionRes.setSentenceAnswer(option.getAnswerText());
+//                    optionRes.setSentenceAnswer(option.getAnswerText());
+                    if(option.getContentRefId()!=null){
+                        Sentence sentence = sentenceRepository.findById(option.getContentRefId())
+                                .orElseThrow(()-> new NotFoundException("khong tim duoc cau  co id :"+option.getContentRefId()));
+                        optionRes.setSentenceAnswer(sentence.getSentence_en());
+                    }
                     optionRes.setCorrect(option.isCorrect());
                     optionRes.setPosition(option.getPosition());
                     return optionRes;

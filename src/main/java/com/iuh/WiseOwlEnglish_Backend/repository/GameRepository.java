@@ -28,15 +28,20 @@ public interface GameRepository extends JpaRepository<Game, Long> {
     // Phương thức kiểm tra sự tồn tại
     boolean existsByTypeAndLessonId(GameType type, Long lessonId);
 
-    List<Game> findByLesson_Id(Long lessonId);
+    List<Game> findByLesson_IdAndDeletedAtIsNull(Long lessonId);
 
     long countByLesson_Id(Long lessonId);
 
-    List<Game> findByLesson_IdIn(List<Long> lessonIds);
+    // --- ĐÃ SỬA: Thêm AndDeletedAtIsNull ---
+    List<Game> findByLesson_IdInAndDeletedAtIsNull(List<Long> lessonIds);
 
     List<Game> findByLesson_IdAndTypeInAndActiveTrue(Long lessonId, Collection<GameType> types);
 
-    @Query("select g.type from Game g where g.lesson.id = :lessonId and g.type in :types")
-    List<GameType> findTypesByLessonIdAndTypeIn(@Param("lessonId") Long lessonId,
-                                                @Param("types") Collection<GameType> types);
+//    @Query("select g.type from Game g where g.lesson.id = :lessonId and g.type in :types")
+//    List<GameType> findTypesByLessonIdAndTypeIn(@Param("lessonId") Long lessonId,
+//                                                @Param("types") Collection<GameType> types);
+// Đã thêm điều kiện "and g.deletedAt IS NULL"
+@Query("select g.type from Game g where g.lesson.id = :lessonId and g.type in :types and g.deletedAt IS NULL")
+List<GameType> findTypesByLessonIdAndTypeIn(@Param("lessonId") Long lessonId,
+                                            @Param("types") Collection<GameType> types);
 }

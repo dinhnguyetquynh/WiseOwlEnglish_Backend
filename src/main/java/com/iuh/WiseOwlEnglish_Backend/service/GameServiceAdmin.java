@@ -22,6 +22,8 @@ import com.iuh.WiseOwlEnglish_Backend.repository.*;
 //import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.weaver.ast.Not;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,8 +47,14 @@ public class GameServiceAdmin {
     private final GameMapper gameMapper;
     private final GameMapperIf gameMapperIf;
     private final DataGameService dataGameService;
+    private final GameAttemptRepository gameAttemptRepository;
     //FUNCTION FOR ADMIN
     // add new game
+    // Xóa cả cache vocab_games và sentence_games khi tạo game mới
+    @Caching(evict = {
+            @CacheEvict(value = "lessonTotals", key = "#req.lessonId + '_vocab_games'"),
+            @CacheEvict(value = "lessonTotals", key = "#req.lessonId + '_sentence_games'")
+    })
     public GameRes createGame(GameReq req){
         if (req.getType() == null) {
             throw new IllegalArgumentException("Loại game không được để trống");
@@ -500,7 +508,7 @@ public class GameServiceAdmin {
         if (!lessonRepository.existsById(lessonId)) {
             throw new BadRequestException("Lesson not found with id: " + lessonId);
         }
-        List<Game> gameList = gameRepository.findByLesson_Id(lessonId);
+        List<Game> gameList = gameRepository.findByLesson_IdAndDeletedAtIsNull(lessonId);
         List<GameResByLesson> gameResByLessons = gameMapperIf.gamesToGameResByLessons(gameList);
         return gameResByLessons;
     }
@@ -519,7 +527,7 @@ public class GameServiceAdmin {
         List<Long> lessonIds = lessons.stream().map(Lesson::getId).toList();
 
         // 3. Lấy tất cả Game thuộc danh sách Lesson ID (chỉ 1 query)
-        List<Game> games = gameRepository.findByLesson_IdIn(lessonIds);
+        List<Game> games = gameRepository.findByLesson_IdInAndDeletedAtIsNull(lessonIds);
 
         // 4. Nhóm các Game theo Lesson ID để tra cứu nhanh
         Map<Long, List<Game>> gamesByLessonIdMap = games.stream()
@@ -548,7 +556,7 @@ public class GameServiceAdmin {
     public GamesOfLessonRes getGamesDetailByLesson(long lessonId){
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(()-> new NotFoundException("Khong tim thay lesson co id :"+lessonId));
-        List<Game> gameList = gameRepository.findByLesson_Id(lessonId);
+        List<Game> gameList = gameRepository.findByLesson_IdAndDeletedAtIsNull(lessonId);
 
         GamesOfLessonRes res = new GamesOfLessonRes();
         res.setLessonId(lesson.getId());
@@ -670,6 +678,10 @@ public class GameServiceAdmin {
     }
 
     //HÀM UPDATE GAME
+    @Caching(evict = {
+            @CacheEvict(value = "lessonTotals", key = "#result.lessonId + '_vocab_games'"), // result là GameRes trả về
+            @CacheEvict(value = "lessonTotals", key = "#result.lessonId + '_sentence_games'")
+    })
     @Transactional
     public GameRes updateGame(Long gameId, GameReq req) {
         // 1. Cập nhật thông tin chung của Game
@@ -802,5 +814,58 @@ public class GameServiceAdmin {
             }
         }
     }
+    // 👇 HÀM MỚI: DELETE GAME
+    public String deleteGame(Long gameId) {
+        // 1. Tìm Game
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new NotFoundException("Game not found with id: " + gameId));
+
+        // 2. Kiểm tra điều kiện
+        boolean isLessonActive = game.getLesson().isActive();
+        boolean hasAttempts = gameAttemptRepository.existsByGame_Id(gameId);
+
+        // 3. Xử lý phân nhánh
+        if (!isLessonActive && !hasAttempts) {
+            // === TRƯỜNG HỢP 1: XOÁ CỨNG (HARD DELETE) ===
+            // Lesson chưa active VÀ chưa ai chơi -> Rác -> Xoá sạch
+
+            // Vì Game.java có CascadeType.ALL + orphanRemoval=true với GameQuestion,
+            // và GameQuestion có CascadeType.ALL với GameOption
+            // -> Chỉ cần xoá Game là Question và Option tự bay màu.
+            gameRepository.delete(game);
+
+            return "Đã xoá vĩnh viễn Game (Hard Delete) vì chưa có dữ liệu người dùng.";
+        } else {
+            // === TRƯỜNG HỢP 2: XOÁ MỀM (SOFT DELETE) ===
+            // Lesson đang active HOẶC đã có người chơi -> Phải giữ lại log -> Ẩn đi
+
+            LocalDateTime now = LocalDateTime.now();
+
+            // Ẩn Game
+            game.setDeletedAt(now);
+            game.setActive(false);
+
+            // Ẩn các câu hỏi con (Question)
+            if (game.getQuestions() != null) {
+                for (GameQuestion q : game.getQuestions()) {
+                    if (q.getDeletedAt() == null) {
+                        q.setDeletedAt(now);
+                        // Ẩn các đáp án con (Option) của câu hỏi
+                        if (q.getOptions() != null) {
+                            for (GameOption o : q.getOptions()) {
+                                if (o.getDeletedAt() == null) {
+                                    o.setDeletedAt(now);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            gameRepository.save(game);
+            return "Đã xoá mềm Game (Soft Delete) để bảo toàn lịch sử người chơi.";
+        }
+    }
+
 
 }

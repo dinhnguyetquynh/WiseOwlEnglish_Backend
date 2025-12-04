@@ -10,6 +10,7 @@ import com.iuh.WiseOwlEnglish_Backend.model.MediaAsset;
 import com.iuh.WiseOwlEnglish_Backend.model.Vocabulary;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,7 +58,8 @@ public class VocabServiceAdmin {
         vocabRes.setPartOfSpeech(vocabulary.getPartOfSpeech());
         return vocabRes;
     }
-
+    // Khi tạo Vocab -> Xóa cache đếm Vocab của lesson đó
+    @CacheEvict(value = "lessonTotals", key = "#req.lessonId + '_vocab'")
     public VocabRes createVocab(CreateVocabReq req) {
         // Tìm lesson ngoài vòng retry (không cần lặp nhiều lần)
         Lesson lesson = lessonRepository.findById(req.getLessonId())

@@ -55,4 +55,10 @@ public class TestAdminController {
         List<String> types = testAdminService.getQuestionTypesByLesson(lessonId);
         return ResponseEntity.ok(types);
     }
+    //  API MỚI: Xoá Test
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<String> deleteTest(@PathVariable Long id) {
+        String message = testAdminService.deleteTest(id);
+        return ResponseEntity.ok(message);
+    }
 }

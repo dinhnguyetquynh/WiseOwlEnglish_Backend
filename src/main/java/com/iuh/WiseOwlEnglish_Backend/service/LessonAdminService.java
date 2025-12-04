@@ -124,7 +124,7 @@ public class LessonAdminService {
 
         // TUY NHIÊN: Model Lesson hiện tại KHÔNG có liên kết @OneToMany tới Game.
         // Vì vậy cần xoá thủ công Game trước để tránh lỗi khoá ngoại (Foreign Key).
-        List<Game> games = gameRepository.findByLesson_Id(lesson.getId());
+        List<Game> games = gameRepository.findByLesson_IdAndDeletedAtIsNull(lesson.getId());
         gameRepository.deleteAll(games);
 
         // Sau đó xoá Lesson (Vocab, Sentence, Test sẽ tự bay màu theo)
@@ -164,7 +164,7 @@ public class LessonAdminService {
         }
 
         // Game
-        List<Game> games = gameRepository.findByLesson_Id(lesson.getId());
+        List<Game> games = gameRepository.findByLesson_IdAndDeletedAtIsNull(lesson.getId());
         for (Game g : games) {
             if (g.getDeletedAt() == null) {
                 g.setDeletedAt(now);
