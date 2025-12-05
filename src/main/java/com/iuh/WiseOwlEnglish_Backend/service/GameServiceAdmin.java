@@ -23,6 +23,8 @@ import com.iuh.WiseOwlEnglish_Backend.repository.*;
 //import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.weaver.ast.Not;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
@@ -52,6 +54,25 @@ public class GameServiceAdmin {
     private final GameAttemptRepository gameAttemptRepository;
 
     private final ApplicationEventPublisher eventPublisher;
+    // 👇 1. INJECT CACHE MANAGER
+    private final CacheManager cacheManager;
+
+    // 👇 2. VIẾT HÀM HỖ TRỢ XÓA CACHE THỦ CÔNG
+    private void clearGameCache(Long lessonId) {
+        if (lessonId == null) return;
+
+        Cache cache = cacheManager.getCache("lessonTotals");
+        if (cache != null) {
+            // Xóa các key liên quan đến việc đếm game
+            cache.evict(lessonId + "_vocab_games");
+            cache.evict(lessonId + "_sentence_games");
+            // Xóa cache đếm tổng câu hỏi (quan trọng)
+            cache.evict(lessonId + "_gamequestion");
+
+            System.out.println("🧹 Đã clear cache lessonTotals cho Lesson ID: " + lessonId);
+        }
+    }
+
     //FUNCTION FOR ADMIN
     // add new game
     // Xóa cả cache vocab_games và sentence_games khi tạo game mới
@@ -846,16 +867,16 @@ public class GameServiceAdmin {
             }
         }
     }
-    // 👇 HÀM MỚI: DELETE GAME
+//
     public String deleteGame(Long gameId) {
         // 1. Tìm Game
         Game game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new NotFoundException("Game not found with id: " + gameId));
-
+        Long lessonId = game.getLesson().getId(); // Lưu lại ID để dùng cho Event
         // 2. Kiểm tra điều kiện
         boolean isLessonActive = game.getLesson().isActive();
         boolean hasAttempts = gameAttemptRepository.existsByGame_Id(gameId);
-
+        String message;
         // 3. Xử lý phân nhánh
         if (!isLessonActive && !hasAttempts) {
             // === TRƯỜNG HỢP 1: XOÁ CỨNG (HARD DELETE) ===
@@ -865,8 +886,7 @@ public class GameServiceAdmin {
             // và GameQuestion có CascadeType.ALL với GameOption
             // -> Chỉ cần xoá Game là Question và Option tự bay màu.
             gameRepository.delete(game);
-
-            return "Đã xoá vĩnh viễn Game (Hard Delete) vì chưa có dữ liệu người dùng.";
+            message = "Đã xoá vĩnh viễn Game (Hard Delete) vì chưa có dữ liệu người dùng.";
         } else {
             // === TRƯỜNG HỢP 2: XOÁ MỀM (SOFT DELETE) ===
             // Lesson đang active HOẶC đã có người chơi -> Phải giữ lại log -> Ẩn đi
@@ -895,9 +915,15 @@ public class GameServiceAdmin {
             }
 
             gameRepository.save(game);
-            return "Đã xoá mềm Game (Soft Delete) để bảo toàn lịch sử người chơi.";
+            message = "Đã xoá mềm Game (Soft Delete) để bảo toàn lịch sử người chơi.";
         }
+        // 4. QUAN TRỌNG: Xóa cache và Bắn event tính lại tiến độ
+        clearGameCache(lessonId); // Xóa cache thủ công
+        eventPublisher.publishEvent(new LessonContentChangedEvent(this, lessonId));
+
+        return message;
     }
+
 
 
 }

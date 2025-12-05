@@ -523,22 +523,51 @@ public class GameService {
 
                 // Game sắp xếp (WORD_TO_SENTENCE)
                 case WORD_TO_SENTENCE: {
-                    if (req.getSequence() == null || req.getSequence().isEmpty()) return new GraderResult(false, 0, "Sắp xếp câu");
+//                    if (req.getSequence() == null || req.getSequence().isEmpty()) return new GraderResult(false, 0, "Sắp xếp câu");
+//
+//                    // Lấy chuỗi ID đúng theo 'position'
+//                    List<Long> correctSequence = options.stream()
+//                            .sorted(Comparator.comparing(GameOption::getPosition))
+//                            .map(GameOption::getId)
+//                            .toList();
+//
+//                    boolean isCorrect = correctSequence.equals(req.getSequence());
+//
+//                    String correctAnswer = options.stream()
+//                            .sorted(Comparator.comparing(GameOption::getPosition))
+//                            .map(GameOption::getAnswerText)
+//                            .collect(Collectors.joining(" ")); // Nối bằng khoảng trắng
+//
+//                    return new GraderResult(isCorrect, isCorrect ?
+                    if (req.getSequence() == null || req.getSequence().isEmpty())
+                        return new GraderResult(false, 0, "Sắp xếp câu");
 
-                    // Lấy chuỗi ID đúng theo 'position'
-                    List<Long> correctSequence = options.stream()
+                    // --- BẮT ĐẦU SỬA ---
+
+                    // 1. Tạo Map để tra cứu Text theo ID nhanh chóng
+                    // Sử dụng hàm helper getOptionText để đảm bảo lấy được text dù nó nằm ở answerText hay linked Vocab
+                    Map<Long, String> mapOptions = options.stream()
+                            .collect(Collectors.toMap(GameOption::getId, this::getOptionText));
+
+                    // 2. Tạo câu đúng chuẩn (Dựa trên Position trong DB)
+                    String correctSentence = options.stream()
                             .sorted(Comparator.comparing(GameOption::getPosition))
-                            .map(GameOption::getId)
-                            .toList();
+                            .map(this::getOptionText)
+                            .collect(Collectors.joining(" "));
 
-                    boolean isCorrect = correctSequence.equals(req.getSequence());
+                    // 3. Tạo câu trả lời của User (Dựa trên Sequence ID gửi lên)
+                    String userSentence = req.getSequence().stream()
+                            .map(mapOptions::get)       // Lấy text tương ứng với ID user gửi
+                            .filter(Objects::nonNull)   // Lọc bỏ null để tránh lỗi nếu ID sai
+                            .collect(Collectors.joining(" "));
 
-                    String correctAnswer = options.stream()
-                            .sorted(Comparator.comparing(GameOption::getPosition))
-                            .map(GameOption::getAnswerText)
-                            .collect(Collectors.joining(" ")); // Nối bằng khoảng trắng
+                    // 4. So sánh nội dung chuỗi (Thay vì so sánh List<Long> ID)
+                    // Cách này giải quyết triệt để lỗi hoán đổi các từ/dấu câu giống nhau
+                    boolean isCorrect = userSentence.equals(correctSentence);
 
-                    return new GraderResult(isCorrect, isCorrect ? reward : 0, correctAnswer);
+                    // --- KẾT THÚC SỬA ---
+
+                    return new GraderResult(isCorrect, isCorrect ? reward : 0, correctSentence);
                 }
 
                 default:

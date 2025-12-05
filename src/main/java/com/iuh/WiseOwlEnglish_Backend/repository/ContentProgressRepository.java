@@ -30,7 +30,10 @@ public interface ContentProgressRepository extends JpaRepository<ContentProgress
             "WHERE cp.learnerProfile.id = :learnerProfileId " +
             "  AND cp.lesson.id = :lessonId " +
             "  AND cp.status = :status " +
-            "  AND g.type IN :gameTypes")
+            "  AND g.type IN :gameTypes"+
+            "  AND g.deletedAt IS NULL " +
+            "  AND g.active = true"
+    )
     long countCompletedGameQuestionsByTypes(
             @Param("learnerProfileId") Long learnerProfileId,
             @Param("lessonId") Long lessonId,

@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -88,12 +90,20 @@ public class IncorrectItemLogService {
             log.error("Failed to logItemAttempt learnerId={}, lessonId={}, itemType={}, itemRefId={}", learnerId, lessonId, itemType, itemRefId, e);
         }
     }
+    /**
+     * Helper để tạo key duy nhất cho Set
+     */
+    private String getKey(ItemType type, Long id) {
+        return type.toString() + "_" + id;
+    }
 
     /**
      * Xử lý log cho câu hỏi GAME (Quét qua Question và Options)
      */
     @Transactional
     public void logGameOptions(Long learnerId, Long lessonId, GameQuestion question, List<GameOption> options, boolean isCorrect) {
+        // 👇 1. TẠO SET ĐỂ TRÁNH TRÙNG LẶP TRONG 1 CÂU HỎI
+        Set<String> processedItems = new HashSet<>();
         try {
             // 1. Log item từ Prompt của câu hỏi
             if (question.getPromptType() == PromptType.IMAGE||question.getPromptType() ==PromptType.AUDIO) {
@@ -102,10 +112,22 @@ public class IncorrectItemLogService {
                 // --- FIX BUG NPE Ở ĐÂY ---
                 if (mediaAsset != null) {
                     if (mediaAsset.getVocabulary() != null && mediaAsset.getVocabulary().getId() != null) {
-                        logItemAttempt(learnerId, lessonId, ItemType.VOCAB, mediaAsset.getVocabulary().getId(), isCorrect);
+                        Long vocabId = mediaAsset.getVocabulary().getId();
+                        String key = getKey(ItemType.VOCAB, vocabId);
+                        // 👇 Chỉ log nếu chưa có trong Set
+                        if (!processedItems.contains(key)) {
+                            logItemAttempt(learnerId, lessonId, ItemType.VOCAB, vocabId, isCorrect);
+                            processedItems.add(key);
+                        }
                     }
                     if (mediaAsset.getSentence() != null && mediaAsset.getSentence().getId() != null) {
-                        logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, mediaAsset.getSentence().getId(), isCorrect);
+                        Long sentenceId = mediaAsset.getSentence().getId();
+                        String key = getKey(ItemType.SENTENCE, sentenceId);
+
+                        if (!processedItems.contains(key)) {
+                            logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, sentenceId, isCorrect);
+                            processedItems.add(key);
+                        }
                     }
                 }
 
@@ -117,7 +139,14 @@ public class IncorrectItemLogService {
             // (Quan trọng cho game Nối từ, Chọn từ...)
             for (GameOption opt : options) {
                 if (opt.getContentType() == ContentType.VOCAB && opt.getContentRefId() != null) {
-                    logItemAttempt(learnerId, lessonId, ItemType.VOCAB, opt.getContentRefId(), isCorrect);
+                    Long vocabId = opt.getContentRefId();
+                    String key = getKey(ItemType.VOCAB, vocabId);
+
+                    // 👇 Check trùng lặp ở đây sẽ ngăn chặn việc log lần 2
+                    if (!processedItems.contains(key)) {
+                        logItemAttempt(learnerId, lessonId, ItemType.VOCAB, vocabId, isCorrect);
+                        processedItems.add(key);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -130,6 +159,8 @@ public class IncorrectItemLogService {
      */
     @Transactional
     public void logTestOptions(Long learnerId, Long lessonId, TestQuestion question, List<TestOption> options, boolean isCorrect) {
+        // 👇 TẠO SET
+        Set<String> processedItems = new HashSet<>();
         try {
 
             if (question.getStemType() == StemType.IMAGE||question.getStemType() == StemType.AUDIO) {
@@ -141,22 +172,42 @@ public class IncorrectItemLogService {
                     // --- FIX BUG NPE Ở ĐÂY ---
                     if (mediaAsset != null) {
                         if (mediaAsset.getVocabulary() != null && mediaAsset.getVocabulary().getId() != null) {
-                            logItemAttempt(learnerId, lessonId, ItemType.VOCAB, mediaAsset.getVocabulary().getId(), isCorrect);
+                            Long vocabId = mediaAsset.getVocabulary().getId();
+                            String key = getKey(ItemType.VOCAB, vocabId);
+                            if (!processedItems.contains(key)) {
+                                logItemAttempt(learnerId, lessonId, ItemType.VOCAB, vocabId, isCorrect);
+                                processedItems.add(key);
+                            }
                         }
                         if (mediaAsset.getSentence() != null && mediaAsset.getSentence().getId() != null) {
-                            logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, mediaAsset.getSentence().getId(), isCorrect);
+                            Long sentenceId = mediaAsset.getSentence().getId();
+                            String key = getKey(ItemType.SENTENCE, sentenceId);
+                            if (!processedItems.contains(key)) {
+                                logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, sentenceId, isCorrect);
+                                processedItems.add(key);
+                            }
                         }
                     }
                 }
             } else if (question.getStemType() == StemType.SENTENCE) {
-                logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, question.getStemRefId(), isCorrect);
+                Long sentenceId = question.getStemRefId();
+                String key = getKey(ItemType.SENTENCE, sentenceId);
+                if (!processedItems.contains(key)) {
+                    logItemAttempt(learnerId, lessonId, ItemType.SENTENCE, sentenceId, isCorrect);
+                    processedItems.add(key);
+                }
             }
 
             // 2. Log item từ các Options
             // (Quan trọng cho game Nối từ)
             for (TestOption opt : options) {
                 if (opt.getContentType() == ContentType.VOCAB && opt.getContentRefId() != null) {
-                    logItemAttempt(learnerId, lessonId, ItemType.VOCAB, opt.getContentRefId(), isCorrect);
+                    Long vocabId = opt.getContentRefId();
+                    String key = getKey(ItemType.VOCAB, vocabId);
+                    if (!processedItems.contains(key)) {
+                        logItemAttempt(learnerId, lessonId, ItemType.VOCAB, vocabId, isCorrect);
+                        processedItems.add(key);
+                    }
                 }
             }
 
