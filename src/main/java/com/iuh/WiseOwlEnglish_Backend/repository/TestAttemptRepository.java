@@ -46,4 +46,7 @@ public interface TestAttemptRepository extends JpaRepository<TestAttempt,Long> {
     // 👇 THÊM MỚI: Kiểm tra xem có lượt làm bài nào cho testId không
     boolean existsByTest_Id(Long testId);
 
+    @Query("SELECT AVG(ta.score) FROM TestAttempt ta JOIN ta.test t WHERE t.lessonTest.id = :lessonId AND ta.status = 'FINISHED'")
+    Double getAverageScoreByLessonId(@Param("lessonId") Long lessonId);
+
 }

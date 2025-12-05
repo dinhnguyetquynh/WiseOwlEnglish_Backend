@@ -19,5 +19,6 @@ public interface LessonProgressRepository extends JpaRepository<LessonProgress, 
 
     //Tìm tất cả bản ghi tiến độ của một bài học cụ thể
     List<LessonProgress> findByLesson_Id(Long lessonId);
-
+    @Query("SELECT COUNT(lp) FROM LessonProgress lp WHERE lp.lesson.id = :lessonId AND lp.percentComplete >= 100")
+    long countCompletedByLessonId(@Param("lessonId") Long lessonId);
 }
