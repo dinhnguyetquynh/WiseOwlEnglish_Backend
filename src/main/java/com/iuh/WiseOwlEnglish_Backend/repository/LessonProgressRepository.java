@@ -17,4 +17,7 @@ public interface LessonProgressRepository extends JpaRepository<LessonProgress, 
     // Kiểm tra xem có bất kỳ tiến độ nào liên quan đến lessonId không
     boolean existsByLesson_Id(Long lessonId);
 
+    //Tìm tất cả bản ghi tiến độ của một bài học cụ thể
+    List<LessonProgress> findByLesson_Id(Long lessonId);
+
 }

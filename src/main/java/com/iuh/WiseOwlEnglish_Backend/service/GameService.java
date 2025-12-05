@@ -180,7 +180,13 @@ public class GameService {
                     PictureWordOptRes optRes = new PictureWordOptRes();
                     optRes.setId(option.getId());
                     optRes.setQuestionId(option.getGameQuestion().getId());
-                    optRes.setAnswerText(option.getAnswerText());
+//                    optRes.setAnswerText(option.getAnswerText());
+                    if(option.getContentRefId()!=null){
+                        Vocabulary vocabulary = vocabularyRepository.findById(option.getContentRefId())
+                                .orElseThrow(()-> new NotFoundException("Khong tim thay vocab:"+option.getContentRefId()));
+                        optRes.setAnswerText(vocabulary.getTerm_en());
+
+                    }
                     optRes.setPosition(option.getPosition());
                     optRes.setCorrect(option.isCorrect());
                     optResList.add(optRes);
@@ -216,14 +222,17 @@ public class GameService {
                     optRes.setId(option.getId());
                     optRes.setQuestionId(option.getGameQuestion().getId());
 
-                    if(option.getContentRefId()!=null){
+                    if(option.getContentType()==ContentType.IMAGE && option.getContentRefId()!=null){
                         MediaAsset mediaAsset = mediaAssetRepository.findById(option.getContentRefId())
                                 .orElseThrow(()-> new NotFoundException("Khong tim thay hinh anh co id: "+option.getContentRefId()));
                         optRes.setImgUrl(mediaAsset.getUrl());
+                    }else{
+                        Vocabulary vocabulary = vocabularyRepository.findById(option.getContentRefId())
+                                .orElseThrow(()-> new NotFoundException("Khong tim thay vocab co id: "));
+                        optRes.setAnswerText(vocabulary.getTerm_en());
                     }
                     optRes.setSide(option.getSide().toString());
                     optRes.setPairKey(option.getPairKey());
-                    optRes.setAnswerText(option.getAnswerText());
                     optRes.setPosition(option.getPosition());
                     optRes.setCorrect(option.isCorrect());
                     optResList.add(optRes);
@@ -469,7 +478,15 @@ public class GameService {
                 }
 
                 // Game điền từ (PICTURE_WORD_WRITING, SENTENCE_HIDDEN_WORD)
-                case PICTURE_WORD_WRITING:
+                case PICTURE_WORD_WRITING:{
+                    GameOption correctOpt = options.stream().filter(GameOption::isCorrect).findFirst().orElse(null);
+                    if (correctOpt == null) return new GraderResult(false, 0, "[Lỗi cấu hình game]");
+                    String correctText = getOptionText(correctOpt);
+//                    boolean isCorrect = correctText.equals(req.getTextInput());
+                    boolean isCorrect = normalize(correctText).equals(normalize(req.getTextInput()));
+                    return new GraderResult(isCorrect, isCorrect ? reward : 0, correctText);
+
+                }
                 case SENTENCE_HIDDEN_WORD: {
                     GameOption correctOpt = options.stream().filter(GameOption::isCorrect).findFirst().orElse(null);
                     if (correctOpt == null) return new GraderResult(false, 0, "[Lỗi cấu hình game]");

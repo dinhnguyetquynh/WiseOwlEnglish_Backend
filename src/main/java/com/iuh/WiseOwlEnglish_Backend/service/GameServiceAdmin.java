@@ -11,6 +11,7 @@ import com.iuh.WiseOwlEnglish_Backend.enums.ContentType;
 import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.enums.PromptType;
 import com.iuh.WiseOwlEnglish_Backend.enums.Side;
+import com.iuh.WiseOwlEnglish_Backend.event.LessonContentChangedEvent;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.GameCreationException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import org.aspectj.weaver.ast.Not;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +50,8 @@ public class GameServiceAdmin {
     private final GameMapperIf gameMapperIf;
     private final DataGameService dataGameService;
     private final GameAttemptRepository gameAttemptRepository;
+
+    private final ApplicationEventPublisher eventPublisher;
     //FUNCTION FOR ADMIN
     // add new game
     // Xóa cả cache vocab_games và sentence_games khi tạo game mới
@@ -83,7 +87,7 @@ public class GameServiceAdmin {
 
     public Game createNewGame(GameReq req){
         try {
-            boolean gameExists = gameRepository.existsByTypeAndLessonId(GameType.valueOf(req.getType()), req.getLessonId());
+            boolean gameExists = gameRepository.existsByLessonIdAndTypeAndDeletedAtIsNull(req.getLessonId(),GameType.valueOf(req.getType()));
             if (gameExists) {
                 throw new ResourceAlreadyExistsException("Loại game :"+req.getType()+"đã tồn tại trong lesson " +req.getLessonId());
             }
@@ -164,6 +168,10 @@ public class GameServiceAdmin {
             }
 
             GameRes res = gameMapper.toDTO(savedGame);
+            // 👇 KÍCH HOẠT SỰ KIỆN CHẠY NGẦM 👇
+            if (res != null) {
+                eventPublisher.publishEvent(new LessonContentChangedEvent(this, req.getLessonId()));
+            }
             return res;
         }catch (GameCreationException exception) {
             throw new GameCreationException("Tạo câu hỏi và đáp án cho game thất bại. Vui lòng thử lại sau.");
@@ -212,7 +220,11 @@ public class GameServiceAdmin {
                 question.setOptions(gameOptionList);
                 GameQuestion savedQuestion = gameQuestionRepository.save(question);
             }
-            return gameMapper.toDTO(savedGame);
+            GameRes res= gameMapper.toDTO(savedGame);
+            if (res != null) {
+                eventPublisher.publishEvent(new LessonContentChangedEvent(this, req.getLessonId()));
+            }
+            return res;
 
         }catch (GameCreationException exception){
             throw new GameCreationException("Tạo câu hỏi và đáp án cho game thất bại. Vui lòng thử lại sau.");
@@ -260,7 +272,11 @@ public class GameServiceAdmin {
                 question.setOptions(gameOptionList);
                 GameQuestion savedQuestion = gameQuestionRepository.save(question);
             }
-            return gameMapper.toDTO(savedGame);
+            GameRes res= gameMapper.toDTO(savedGame);
+            if (res != null) {
+                eventPublisher.publishEvent(new LessonContentChangedEvent(this, req.getLessonId()));
+            }
+            return res;
 
 
         }catch (GameCreationException exception){
@@ -308,7 +324,11 @@ public class GameServiceAdmin {
                 question.setOptions(gameOptionList);
                 GameQuestion savedQuestion = gameQuestionRepository.save(question);
             }
-            return gameMapper.toDTO(savedGame);
+            GameRes res= gameMapper.toDTO(savedGame);
+            if (res != null) {
+                eventPublisher.publishEvent(new LessonContentChangedEvent(this, req.getLessonId()));
+            }
+            return res;
         }catch (GameCreationException exception){
             throw new GameCreationException("Tạo câu hỏi và đáp án cho game nhìn hình  và viết từ vựng thất bại. Vui lòng thử lại sau.");
         }
@@ -368,7 +388,11 @@ public class GameServiceAdmin {
                 question.setOptions(gameOptionList);
                 GameQuestion savedQuestion = gameQuestionRepository.save(question);
             }
-            return gameMapper.toDTO(savedGame);
+            GameRes res= gameMapper.toDTO(savedGame);
+            if (res != null) {
+                eventPublisher.publishEvent(new LessonContentChangedEvent(this, req.getLessonId()));
+            }
+            return res;
         }catch (GameCreationException exception){
             throw new GameCreationException("Tạo câu hỏi và đáp án cho game Nối hình ảnh với từ vựng thất bại. Vui lòng thử lại sau.");
         }
@@ -416,7 +440,11 @@ public class GameServiceAdmin {
                 question.setOptions(List.of(option));
                 GameQuestion savedQuestion = gameQuestionRepository.save(question);
             }
-            return gameMapper.toDTO(savedGame);
+            GameRes res= gameMapper.toDTO(savedGame);
+            if (res != null) {
+                eventPublisher.publishEvent(new LessonContentChangedEvent(this, req.getLessonId()));
+            }
+            return res;
         }catch (GameCreationException exception){
             throw new GameCreationException("Tạo câu hỏi và đáp án cho game điền từ còn thiếu trong câu thất bại. Vui lòng thử lại sau.");
         }
@@ -458,7 +486,11 @@ public class GameServiceAdmin {
                 question.setOptions(gameOptionList);
                 GameQuestion savedQuestion = gameQuestionRepository.save(question);
             }
-            return gameMapper.toDTO(savedGame);
+            GameRes res= gameMapper.toDTO(savedGame);
+            if (res != null) {
+                eventPublisher.publishEvent(new LessonContentChangedEvent(this, req.getLessonId()));
+            }
+            return res;
         }catch (GameCreationException exception){
             throw new GameCreationException("Tạo câu hỏi và đáp án cho game Sắp xếp từ thành câu thất bại. Vui lòng thử lại sau.");
         }

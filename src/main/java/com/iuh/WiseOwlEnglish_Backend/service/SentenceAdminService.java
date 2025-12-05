@@ -4,6 +4,7 @@ import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateSentenceReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.SentenceAdminRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.*;
+import com.iuh.WiseOwlEnglish_Backend.event.LessonContentChangedEvent;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
@@ -12,6 +13,7 @@ import com.iuh.WiseOwlEnglish_Backend.model.Sentence;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +42,9 @@ public class SentenceAdminService {
 
     private static final int MAX_RETRY = 5;        // tăng retry nếu muốn
     private static final long RETRY_SLEEP_MS = 80; // backoff ngắn
+
+    // Inject Publisher
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<SentenceAdminRes> getListSentence(long lessonId){
         List<Sentence> sentenceList = sentenceRepository.findByLessonSentence_Id(lessonId);
@@ -139,6 +144,9 @@ public class SentenceAdminService {
                     return resLocal;
                 });
 
+                if (res != null) {
+                    eventPublisher.publishEvent(new LessonContentChangedEvent(this, req.getLessonId()));
+                }
                 // nếu transactionTemplate.execute trả về res (không bị exception) => thành công
                 return res;
 
@@ -203,10 +211,12 @@ public class SentenceAdminService {
                 }
             }
             sentenceRepository.save(sentence);
+            eventPublisher.publishEvent(new LessonContentChangedEvent(this, sentence.getLessonSentence().getId()));
             return "Soft Deleted: Câu đã được ẩn vì có người học.";
         } else {
             // === XÓA CỨNG ===
             sentenceRepository.delete(sentence);
+            eventPublisher.publishEvent(new LessonContentChangedEvent(this, sentence.getLessonSentence().getId()));
             return "Hard Deleted: Câu đã được xóa vĩnh viễn.";
         }
     }

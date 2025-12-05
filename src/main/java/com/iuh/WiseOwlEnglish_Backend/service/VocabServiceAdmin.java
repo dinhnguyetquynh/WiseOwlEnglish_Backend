@@ -3,6 +3,7 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.CreateVocabReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.VocabRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.*;
+import com.iuh.WiseOwlEnglish_Backend.event.LessonContentChangedEvent;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
@@ -11,6 +12,7 @@ import com.iuh.WiseOwlEnglish_Backend.model.Vocabulary;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,9 @@ public class VocabServiceAdmin {
 
     private static final int MAX_RETRY = 5;
     private static final long RETRY_SLEEP_MS = 80L;
+
+    // Inject Publisher
+    private final ApplicationEventPublisher eventPublisher;
 
 
     public List<VocabRes> getListVocab(long lessonId){
@@ -139,6 +144,10 @@ public class VocabServiceAdmin {
                     res.setPartOfSpeech(created.getPartOfSpeech());
                     return res;
                 });
+                // 👇 KÍCH HOẠT SỰ KIỆN CHẠY NGẦM 👇
+                if (result != null) {
+                    eventPublisher.publishEvent(new LessonContentChangedEvent(this, req.getLessonId()));
+                }
 
                 // Nếu không exception => thành công
                 return result;
@@ -176,6 +185,7 @@ public class VocabServiceAdmin {
                             "Vui lòng tắt kích hoạt bài học hoặc xóa toàn bộ bài học."
             );
         }
+        Long lessonId = vocab.getLessonVocabulary().getId();
 
         // 3. CHECK RÀNG BUỘC CẤU TRÚC (GAME & TEST)
         // Dù bài học chưa active, vẫn phải chặn nếu từ này đã được gán vào Game/Test (để tránh lỗi config)
@@ -210,11 +220,14 @@ public class VocabServiceAdmin {
                 }
             }
             vocabularyRepository.save(vocab);
+            // 👇 KÍCH HOẠT SỰ KIỆN CHẠY NGẦM (Ở cuối hàm, trước khi return) 👇
+            eventPublisher.publishEvent(new LessonContentChangedEvent(this, lessonId));
             return "Soft Deleted: Từ vựng đã được ẩn (do có dữ liệu lịch sử).";
         } else {
             // === XÓA CỨNG (Hard Delete) ===
             // Đây là trường hợp phổ biến nhất khi Admin đang soạn bài
             vocabularyRepository.delete(vocab);
+            eventPublisher.publishEvent(new LessonContentChangedEvent(this, lessonId));
             return "Hard Deleted: Từ vựng đã được xóa vĩnh viễn.";
         }
     }

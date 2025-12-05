@@ -9,6 +9,7 @@ import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonWithTestsRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.TestAdminByLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.TestsOfLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.*;
+import com.iuh.WiseOwlEnglish_Backend.event.LessonContentChangedEvent;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
 import com.iuh.WiseOwlEnglish_Backend.model.*;
@@ -16,6 +17,7 @@ import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,9 @@ public class TestAdminService {
     private final TransactionTemplate transactionTemplate;
     private final TestQuestionRepository testQuestionRepository;
     private final SentenceRepository sentenceRepository; // 2. Inject thêm Repository này
+
+    // 1. Inject Publisher
+    private final ApplicationEventPublisher eventPublisher;
 
     public TestsOfLessonRes getTestsByLessonId(Long lessonId) {
         if (lessonId == null) {
@@ -141,103 +146,7 @@ public class TestAdminService {
     private static final int MAX_RETRY = 3;
     private static final long RETRY_SLEEP_MS = 50L;
 
-    //ADMIN FUNCTIONALITY
-//    public TestRes createTest(TestReq request) {
-//        int attempt = 0;
-//        while (true) {
-//            attempt++;
-//            try {
-//                // each attempt runs inside its own transaction
-//                return transactionTemplate.execute(status -> {
-//                    // --- create Test ---
-//                    Test test = new Test();
-//                    Lesson lesson = lessonRepository.findById(request.getLessonId())
-//                            .orElseThrow(() -> new RuntimeException("Lesson not found"));
-//                    test.setLessonTest(lesson);
-//                    test.setActive(request.getActive());
-//                    test.setTitle(request.getTitle());
-//                    test.setTestType(TestType.valueOf(request.getType()));
-//                    test.setDescription(request.getDescription());
-//                    test.setDurationMin(request.getDurationMin());
-//                    test.setCreatedAt(LocalDateTime.now());
-//                    test.setUpdatedAt(LocalDateTime.now());
-//
-//                    Test savedTest = testRepository.save(test); // persisted and has id
-//
-//                    // --- determine starting order for questions (max existing order) ---
-//                    int maxQuestionOrder = testQuestionRepository.findMaxOrderInTestByTestId(savedTest.getId());
-//                    int nextQuestionOrder = maxQuestionOrder + 1;
-//
-//                    for (var qReq : request.getQuestions()) {
-//                        TestQuestion question = new TestQuestion();
-//                        question.setTest(savedTest);
-//
-//                        // System assigns orderInTest (no input from user)
-//                        question.setOrderInTest(nextQuestionOrder++);
-//                        question.setQuestionType(TestQuestionType.valueOf(qReq.getQuestionType()));
-//                        question.setStemType(StemType.valueOf(qReq.getStemType()));
-//                        question.setStemRefId(qReq.getStemRefId());
-//                        question.setStemText(qReq.getStemText());
-//                        question.setHiddenWord(qReq.getHiddenWord());
-//                        question.setDifficulty(1);
-//                        question.setMaxScore(qReq.getMaxScore());
-//                        question.setCreatedAt(LocalDateTime.now());
-//                        question.setUpdatedAt(LocalDateTime.now());
-//
-//                        // Options: assign orders starting from 1 for each new question
-//                        List<TestOption> opts = new ArrayList<>();
-//                        int optionOrder = 1;
-//                        for (var oReq : qReq.getOptions()) {
-//                            TestOption option = new TestOption();
-//                            option.setQuestion(question);
-//                            option.setContentType(ContentType.valueOf(oReq.getContentType()));
-//                            option.setContentRefId(oReq.getContentRefId());
-//                            option.setText(oReq.getText());
-//                            option.setCorrect(oReq.isCorrect());
-//                            option.setOrder(optionOrder++);
-//                            if (oReq.getSide() != null) {
-//                                option.setSide(Side.valueOf(oReq.getSide()));
-//                            }
-//                            option.setPairKey(oReq.getPairKey());
-//                            option.setCreatedAt(LocalDateTime.now());
-//                            option.setUpdatedAt(LocalDateTime.now());
-//                            opts.add(option);
-//                        }
-//                        question.setOptions(opts);
-//
-//                        // Save question (cascade will save options if configured)
-//                        testQuestionRepository.save(question);
-//                    }
-//
-//                    // Build response DTO
-//                    TestRes res = new TestRes();
-//                    res.setId(savedTest.getId());
-//                    res.setLessonId(savedTest.getLessonTest().getId());
-//                    res.setActive(savedTest.getActive());
-//                    res.setTitle(savedTest.getTitle());
-//                    res.setType(savedTest.getTestType().toString());
-//                    res.setDescription(savedTest.getDescription());
-//                    res.setDurationMin(savedTest.getDurationMin());
-//                    return res;
-//                });
-//            } catch (DataIntegrityViolationException dive) {
-//                // Likely a unique constraint violation on (test_id, orderInTest)
-//                if (attempt >= MAX_RETRY) {
-//                    throw new BadRequestException("Khong tao duoc test question (conflict orderIndex) sau " + MAX_RETRY + " lan thu.");
-//                }
-//                // short backoff to reduce collision chance
-//                try {
-//                    Thread.sleep(RETRY_SLEEP_MS);
-//                } catch (InterruptedException e) {
-//                    Thread.currentThread().interrupt();
-//                }
-//                // then retry
-//            } catch (Exception exception) {
-//                // lỗi khác -> ném BadRequest
-//                throw new BadRequestException("Khong tao duoc test: " + exception.getMessage());
-//            }
-//        }
-//    }
+
     // ================== CẬP NHẬT LOGIC TẠO TEST ==================
     @CacheEvict(value = "lessonTotals", key = "#request.lessonId + '_testquestion'")
     public TestRes createTest(TestReq request) {
@@ -304,6 +213,7 @@ public class TestAdminService {
                         question.setOptions(opts);
                         testQuestionRepository.save(question);
                     }
+                    eventPublisher.publishEvent(new LessonContentChangedEvent(this, request.getLessonId()));
 
                     // 5. Build Response
                     TestRes res = new TestRes();
@@ -314,6 +224,7 @@ public class TestAdminService {
                     res.setType(savedTest.getTestType().toString());
                     res.setDescription(savedTest.getDescription());
                     res.setDurationMin(savedTest.getDurationMin());
+
                     return res;
                 });
             } catch (DataIntegrityViolationException dive) {
@@ -505,7 +416,7 @@ public class TestAdminService {
             // và TestQuestion có cascade = CascadeType.ALL với options
             // -> Xoá Test sẽ tự động xoá hết câu hỏi và đáp án liên quan.
             testRepository.delete(test);
-
+            eventPublisher.publishEvent(new LessonContentChangedEvent(this, test.getLessonTest().getId()));
             return "Đã xoá vĩnh viễn Test (Hard Delete) vì chưa có dữ liệu người dùng.";
         } else {
             // === TRƯỜNG HỢP 2: XOÁ MỀM (SOFT DELETE) ===
@@ -518,6 +429,7 @@ public class TestAdminService {
             // Các API lấy câu hỏi cần đảm bảo check test.deletedAt hoặc test.isActive.
 
             testRepository.save(test);
+            eventPublisher.publishEvent(new LessonContentChangedEvent(this, test.getLessonTest().getId()));
             return "Đã xoá mềm Test (Soft Delete) để bảo toàn lịch sử người làm bài.";
         }
     }

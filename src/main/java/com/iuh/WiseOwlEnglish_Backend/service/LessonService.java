@@ -57,12 +57,12 @@ public class LessonService {
         // 5) Map DTO với rule trạng thái: 100 => COMPLETE, else ACTIVE
         List<LessonBriefRes> items = new ArrayList<>(lessons.size());
         for (Lesson l : lessons) {
-//            int pct = Optional.ofNullable(percentMap.get(l.getId())).orElse(0);
-//            pct = Math.max(0, Math.min(100, pct));
+            int pct = Optional.ofNullable(percentMap.get(l.getId())).orElse(0);
+            pct = Math.max(0, Math.min(100, pct));
             // --- FIX: TÍNH TOÁN LẠI TIẾN ĐỘ THAY VÌ LẤY TỪ DB ---
             // Điều này đảm bảo nếu Admin thêm bài mới, mẫu số tăng lên -> % giảm xuống
-            double calculatedPercent = lessonCalculatorService.calculateCurrentProgress(learnerProfileId, l.getId());
-            int pct = (int) Math.round(calculatedPercent);
+//            double calculatedPercent = lessonCalculatorService.calculateCurrentProgress(learnerProfileId, l.getId());
+//            int pct = (int) Math.round(calculatedPercent);
             pct = Math.max(0, Math.min(100, pct)); // Kẹp trong khoảng 0-100
             String status = (pct >= 100) ? "COMPLETE" : "ACTIVE";
             LessonBriefRes lessonBriefRes = new LessonBriefRes();
@@ -199,11 +199,11 @@ public class LessonService {
                     ));
 
             for (Lesson l : lessons) {
-//                int pct = percentMap.getOrDefault(l.getId(), 0);
-//                pct = Math.max(0, Math.min(100, pct));
+                int pct = percentMap.getOrDefault(l.getId(), 0);
+                pct = Math.max(0, Math.min(100, pct));
                 // --- FIX: TÍNH TOÁN LẠI TIẾN ĐỘ ---
-                double calculatedPercent = lessonCalculatorService.calculateCurrentProgress(learnerProfileId, l.getId());
-                int pct = (int) Math.round(calculatedPercent);
+//                double calculatedPercent = lessonCalculatorService.calculateCurrentProgress(learnerProfileId, l.getId());
+//                int pct = (int) Math.round(calculatedPercent);
                 pct = Math.max(0, Math.min(100, pct));
                 String status = (pct >= 100) ? "COMPLETE" : "ACTIVE";
                 LessonBriefRes lessonBriefRes = new LessonBriefRes();
