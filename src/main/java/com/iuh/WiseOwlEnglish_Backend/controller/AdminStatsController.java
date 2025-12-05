@@ -6,10 +6,7 @@ import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.LessonStatsRes;
 import com.iuh.WiseOwlEnglish_Backend.service.AdminStatsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -20,8 +17,10 @@ public class AdminStatsController {
     private final AdminStatsService statsService;
 
     @GetMapping("/learners")
-    public ResponseEntity<LearnerStatsRes> getLearnerStats() {
-        return ResponseEntity.ok(statsService.getLearnerStats());
+    public ResponseEntity<LearnerStatsRes> getLearnerStats(
+            @RequestParam(defaultValue = "2025") int year // Mặc định năm hiện tại hoặc tùy chọn
+    ) {
+        return ResponseEntity.ok(statsService.getLearnerStats(year));
     }
 
     @GetMapping("/lessons-by-grade/{gradeId}")

@@ -3,6 +3,7 @@ package com.iuh.WiseOwlEnglish_Backend.repository;
 import com.iuh.WiseOwlEnglish_Backend.model.LearnerProfile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,4 +18,16 @@ public interface LearnerProfileRepository extends JpaRepository<LearnerProfile, 
             "GROUP BY TO_CHAR(created_at, 'MM/YYYY'), DATE_TRUNC('month', created_at) " +
             "ORDER BY DATE_TRUNC('month', created_at) ASC", nativeQuery = true)
     List<Object[]> countNewLearnersByMonth();
+
+
+    @Query(value = """
+    SELECT 
+        EXTRACT(MONTH FROM created_at) as month, 
+        COUNT(*) as count 
+    FROM learner_profiles 
+    WHERE EXTRACT(YEAR FROM created_at) = :year 
+    GROUP BY EXTRACT(MONTH FROM created_at) 
+    ORDER BY month ASC
+""", nativeQuery = true)
+    List<Object[]> countNewLearnersByYear(@Param("year") int year);
 }

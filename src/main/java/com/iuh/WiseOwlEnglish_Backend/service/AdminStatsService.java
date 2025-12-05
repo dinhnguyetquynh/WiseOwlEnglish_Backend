@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.GradeDistribution;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.GradeReportRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.LearnerStatsRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.LessonStatsRes;
@@ -11,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,20 +26,44 @@ public class AdminStatsService {
     private final TestAttemptRepository testAttemptRepo;
     // 1. Thống kê người học
     @Transactional(readOnly = true)
-    public LearnerStatsRes getLearnerStats() {
+    // Sửa signature hàm để nhận year
+    public LearnerStatsRes getLearnerStats(int year) {
         LearnerStatsRes res = new LearnerStatsRes();
         res.setTotalLearners(learnerRepo.count());
         res.setTotalUserAccounts(userRepo.count());
-        res.setGradeDistribution(gradeProgressRepo.countLearnersByGrade());
 
-        List<Object[]> growthData = learnerRepo.countNewLearnersByMonth();
-        res.setMonthlyGrowth(growthData.stream()
-                .map(row -> new LearnerStatsRes.MonthlyGrowth((String) row[0], ((Number) row[1]).longValue()))
-                .collect(Collectors.toList()));
+        // 1. Phân bổ lớp (Giữ nguyên logic cũ)
+        List<Object[]> rawGrades = gradeProgressRepo.countLearnersByGradeRaw();
+        List<GradeDistribution> gradeDist = rawGrades.stream()
+                .map(row -> new GradeDistribution(
+                        "Lớp " + row[0],
+                        ((Number) row[1]).longValue()
+                ))
+                .collect(Collectors.toList());
+        res.setGradeDistribution(gradeDist);
+
+        // 2. Thống kê theo tháng (Logic MỚI)
+        List<Object[]> rawGrowth = learnerRepo.countNewLearnersByYear(year);
+
+        // Tạo map để tra cứu nhanh: tháng -> số lượng
+        Map<Integer, Long> monthlyData = rawGrowth.stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).intValue(), // month (1-12)
+                        row -> ((Number) row[1]).longValue() // count
+                ));
+
+        // Tạo danh sách đủ 12 tháng
+        List<LearnerStatsRes.MonthlyGrowth> growthStats = new ArrayList<>();
+        for (int m = 1; m <= 12; m++) {
+            long count = monthlyData.getOrDefault(m, 0L);
+            // Label dạng "Tháng 1", "Tháng 2"...
+            growthStats.add(new LearnerStatsRes.MonthlyGrowth("T" + m, count));
+        }
+
+        res.setMonthlyGrowth(growthStats);
 
         return res;
     }
-
     // 2. Thống kê chi tiết bài học theo Lớp (Grade)
     @Transactional(readOnly = true)
     public GradeReportRes getLessonStatsByGrade(Long gradeId) { // 👈 Đổi kiểu trả về

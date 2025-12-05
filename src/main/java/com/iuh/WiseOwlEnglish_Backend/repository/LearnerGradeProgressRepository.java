@@ -28,13 +28,20 @@ public interface LearnerGradeProgressRepository extends JpaRepository<LearnerGra
     Optional<LearnerGradeProgress> findByLearnerProfile_IdAndGradeLevel_Id(Long learnerProfileId, Long gradeLevelId);
 
     // 👇 CẬP NHẬT LẠI QUERY NÀY
-    @Query("SELECT new com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.GradeDistribution(" +
-            " lgp.gradeLevel.gradeName, COUNT(lgp)) " +
-            "FROM LearnerGradeProgress lgp " +
-            "WHERE lgp.isPrimary = true " +
-            "GROUP BY lgp.gradeLevel.gradeName, lgp.gradeLevel.orderIndex " + // 👈 Thêm orderIndex vào đây
-            "ORDER BY lgp.gradeLevel.orderIndex ASC")
-    List<GradeDistribution> countLearnersByGrade();
+//    @Query("SELECT new com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.GradeDistribution(" +
+//            " lgp.gradeLevel.gradeName, COUNT(lgp)) " +
+//            "FROM LearnerGradeProgress lgp " +
+//            "WHERE lgp.isPrimary = true " +
+//            "GROUP BY lgp.gradeLevel.gradeName, lgp.gradeLevel.orderIndex " + // 👈 Thêm orderIndex vào đây
+//            "ORDER BY lgp.gradeLevel.orderIndex ASC")
+//    List<GradeDistribution> countLearnersByGrade();
+    @Query("SELECT gl.orderIndex, COUNT(lgp) " +
+            "FROM GradeLevel gl " +
+            "LEFT JOIN LearnerGradeProgress lgp ON lgp.gradeLevel = gl AND lgp.isPrimary = true " +
+            "GROUP BY gl.orderIndex " +
+            "ORDER BY gl.orderIndex ASC")
+    List<Object[]> countLearnersByGradeRaw();
+
 
     @Query("SELECT COUNT(lgp) FROM LearnerGradeProgress lgp WHERE lgp.gradeLevel.id = :gradeId")
     long countTotalLearnersInGrade(@Param("gradeId") Long gradeId);
