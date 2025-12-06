@@ -43,6 +43,7 @@ public interface LearnerGradeProgressRepository extends JpaRepository<LearnerGra
     List<Object[]> countLearnersByGradeRaw();
 
 
-    @Query("SELECT COUNT(lgp) FROM LearnerGradeProgress lgp WHERE lgp.gradeLevel.id = :gradeId")
+    // 👇 ĐÃ SỬA: Thêm điều kiện 'AND lgp.isPrimary = true'
+    @Query("SELECT COUNT(lgp) FROM LearnerGradeProgress lgp WHERE lgp.gradeLevel.id = :gradeId AND lgp.isPrimary = true")
     long countTotalLearnersInGrade(@Param("gradeId") Long gradeId);
 }
