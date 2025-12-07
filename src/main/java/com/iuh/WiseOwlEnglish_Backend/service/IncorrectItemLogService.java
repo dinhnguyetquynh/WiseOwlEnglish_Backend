@@ -111,7 +111,7 @@ public class IncorrectItemLogService {
                         .orElseThrow(()-> new NotFoundException("Khong tim thay media nao co id:"+question.getPromptRefId()));
                 // --- FIX BUG NPE Ở ĐÂY ---
                 if (mediaAsset != null) {
-                    if (mediaAsset.getVocabulary() != null && mediaAsset.getVocabulary().getId() != null) {
+                    if (mediaAsset.getVocabulary() != null && mediaAsset.getVocabulary().getId() != null ) {
                         Long vocabId = mediaAsset.getVocabulary().getId();
                         String key = getKey(ItemType.VOCAB, vocabId);
                         // 👇 Chỉ log nếu chưa có trong Set
@@ -138,7 +138,7 @@ public class IncorrectItemLogService {
             // 2. Log item từ các Options
             // (Quan trọng cho game Nối từ, Chọn từ...)
             for (GameOption opt : options) {
-                if (opt.getContentType() == ContentType.VOCAB && opt.getContentRefId() != null) {
+                if (opt.getContentType() == ContentType.VOCAB && opt.getContentRefId() != null && opt.isCorrect()) {
                     Long vocabId = opt.getContentRefId();
                     String key = getKey(ItemType.VOCAB, vocabId);
 
