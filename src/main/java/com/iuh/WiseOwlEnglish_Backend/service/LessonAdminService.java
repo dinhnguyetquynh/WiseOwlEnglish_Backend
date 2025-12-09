@@ -1,6 +1,7 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.request.UpdateLessonRequest;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.CreateLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonRes;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
@@ -208,6 +209,45 @@ public class LessonAdminService {
         // 4. Lưu và trả về kết quả
         Lesson updatedLesson = lessonRepository.save(lesson);
         return toDTO(updatedLesson);
+    }
+
+    public LessonRes updateLesson(Long id, UpdateLessonRequest request) {
+        // 1. Tìm Lesson theo ID
+        Lesson existingLesson = lessonRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Lesson với ID: " + id));
+
+        // 2. Cập nhật các trường thông tin (Chỉ update nếu dữ liệu gửi lên khác null hoặc rỗng nếu cần)
+        if (request.getUnitName() != null && !request.getUnitName().isEmpty()) {
+            existingLesson.setUnitName(request.getUnitName());
+        }
+
+        if (request.getLessonName() != null && !request.getLessonName().isEmpty()) {
+            existingLesson.setLessonName(request.getLessonName());
+        }
+
+        if (request.getMascot() != null) {
+            existingLesson.setMascot(request.getMascot());
+        }
+
+        // 3. Hệ thống tự cập nhật trường updatedAt
+        existingLesson.setUpdatedAt(LocalDateTime.now());
+
+        // 4. Lưu xuống database
+        Lesson updatedLesson = lessonRepository.save(existingLesson);
+        LessonRes res = mapLessonToRes(updatedLesson);
+        return res;
+    }
+
+    public LessonRes mapLessonToRes(Lesson lesson){
+        LessonRes res = new LessonRes();
+        res.setId(lesson.getId());
+        res.setUnitNumber(lesson.getUnitName());
+        res.setUnitName(lesson.getLessonName());
+        res.setOrderIndex(lesson.getOrderIndex());
+        res.setActive(lesson.isActive());
+        res.setUrlMascot(lesson.getMascot());
+        res.setUpdatedAt(lesson.getUpdatedAt());
+        return res;
     }
 
 }

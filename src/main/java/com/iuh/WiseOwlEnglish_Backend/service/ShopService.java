@@ -1,6 +1,8 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.ShopDataRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.StickerRes;
+import com.iuh.WiseOwlEnglish_Backend.enums.StickerRarity;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
 import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
 import com.iuh.WiseOwlEnglish_Backend.model.CategorySticker;
@@ -17,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -107,5 +111,57 @@ public class ShopService {
 
         profile.setAvatarUrl(sticker.getImageUrl());
         learnerProfileRepo.save(profile);
+    }
+    @Transactional
+    public StickerRes rewardRandomEpicSticker(Long learnerId) {
+        // 1. Tìm người dùng
+        LearnerProfile profile = learnerProfileRepo.findById(learnerId)
+                .orElseThrow(() -> new NotFoundException("Learner not found"));
+
+        // 2. Lấy tất cả Sticker loại EPIC
+        List<Sticker> epicStickers = stickerRepo.findByRarity(StickerRarity.RARE);
+        if (epicStickers.isEmpty()) {
+            throw new NotFoundException("Chưa có Sticker EPIC nào trong hệ thống");
+        }
+
+        // 3. Lọc ra những sticker user CHƯA sở hữu (để tránh tặng trùng)
+        List<Long> ownedIds = learnerStickerRepo.findByLearnerProfile_Id(learnerId)
+                .stream()
+                .map(ls -> ls.getSticker().getId())
+                .toList();
+
+        List<Sticker> availableEpics = epicStickers.stream()
+                .filter(s -> !ownedIds.contains(s.getId()))
+                .collect(Collectors.toList());
+
+        // 4. Logic chọn quà
+        Sticker gift;
+        if (!availableEpics.isEmpty()) {
+            // Nếu còn sticker chưa sở hữu -> Random 1 cái trong đó
+            gift = availableEpics.get(new Random().nextInt(availableEpics.size()));
+        } else {
+            // Nếu đã sở hữu hết -> Tặng đại 1 cái (hoặc bạn có thể đổi thành tặng điểm)
+            // Ở đây mình để tặng đại 1 cái random trong list gốc
+            gift = epicStickers.get(new Random().nextInt(epicStickers.size()));
+        }
+        StickerRes res = new StickerRes();
+        res.setId(gift.getId());
+        res.setName(gift.getName());
+        res.setImgUrl(gift.getImageUrl());
+        res.setPrice(gift.getPrice());
+        res.setRarity(gift.getRarity().toString());
+        res.setCategory(gift.getCategory().toString());
+
+
+        // 5. Lưu vào bảng LearnerSticker (Chỉ lưu nếu chưa có, nếu logic trên cho phép trùng thì cứ save)
+        if (!learnerStickerRepo.existsByLearnerProfile_IdAndSticker_Id(learnerId, gift.getId())) {
+            LearnerSticker ls = new LearnerSticker();
+            ls.setLearnerProfile(profile);
+            ls.setSticker(gift);
+            ls.setPurchasedAt(LocalDateTime.now());
+            learnerStickerRepo.save(ls);
+        }
+
+        return res; // Trả về sticker để hiển thị thông báo
     }
 }

@@ -1,125 +1,158 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.PronounceGradeResponse;
-import lombok.RequiredArgsConstructor;
-
+import com.iuh.WiseOwlEnglish_Backend.exception.ApiException;
+import com.iuh.WiseOwlEnglish_Backend.exception.ErrorCode;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.FileOutputStream;
-
-import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class PronounceService {
 
     private final RestTemplate restTemplate;
-    @Value("${pronunciation.scorer.url}")
-    private String scorerUrl;
 
-    // Save multipart to temp file
-    private File saveTempFile(MultipartFile mp, String suffix) throws Exception {
-        File tmp = File.createTempFile("upload-", suffix);
-        try (FileOutputStream fos = new FileOutputStream(tmp)) {
-            fos.write(mp.getBytes());
-        }
-        return tmp;
+    @Value("${assemblyai.api.key}")
+    private String apiKey;
+
+    private static final String UPLOAD_URL = "https://api.assemblyai.com/v2/upload";
+    private static final String TRANSCRIPT_URL = "https://api.assemblyai.com/v2/transcript";
+
+    public PronounceService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
     }
 
-    // Convert to wav using ffmpeg. Input can be webm/ogg/mp3/wav. Output WAV 16k mono.
-    private File convertToWav(File input) throws Exception {
-        String in = input.getAbsolutePath();
-        File out = File.createTempFile("conv-", ".wav");
-        ProcessBuilder pb = new ProcessBuilder(
-                "ffmpeg", "-y",
-                "-i", in,
-                "-ar", "16000",
-                "-ac", "1",
-                "-vn",
-                "-f", "wav",
-                out.getAbsolutePath()
-        );
-        pb.redirectErrorStream(true);
-        Process p = pb.start();
-        int code = p.waitFor();
-        if (code != 0) {
-            throw new RuntimeException("ffmpeg convert failed with exit code " + code);
-        }
-        return out;
-    }
-    // ByteArrayResource with filename (ensures Content-Disposition includes filename)
-    private ByteArrayResource asResource(File file) throws Exception {
-        byte[] data = Files.readAllBytes(file.toPath());
-        return new ByteArrayResource(data) {
-            @Override
-            public String getFilename() {
-                return file.getName();
-            }
-        };
-    }
-
-    public PronounceGradeResponse score(MultipartFile audioUser, MultipartFile audioRef) throws Exception {
-        File userRaw = null, refRaw = null, userFile = null, refFile = null;
+    public PronounceGradeResponse scorePronunciation(MultipartFile audioFile, String targetWord) {
         try {
-            // 1. save uploaded multipart to temp files
-            userRaw = saveTempFile(audioUser, ".u");
-            refRaw  = saveTempFile(audioRef, ".r");
+            // 1. Upload Audio lên AssemblyAI
+            String audioUrl = uploadFileToAssemblyAI(audioFile);
 
-            // 2. convert to wav 16k mono
-            userFile = convertToWav(userRaw);
-            refFile  = convertToWav(refRaw);
+            // 2. Yêu cầu Transcribe (Chuyển âm thanh thành văn bản)
+            String transcriptId = requestTranscription(audioUrl);
 
-            // 3. prepare multipart body to send to FastAPI
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("audioUser", asResource(userFile));
-            body.add("audioRef", asResource(refFile));
+            // 3. Polling để lấy kết quả (Vì AI cần vài giây để xử lý)
+            String userText = pollForTranscriptionResult(transcriptId);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            // 4. So sánh và chấm điểm
+            return calculateScore(targetWord, userText);
 
-            HttpEntity<MultiValueMap<String, Object>> req = new HttpEntity<>(body, headers);
-
-            // 4. call scorer service
-            ResponseEntity<JsonNode> resp = restTemplate.postForEntity(scorerUrl, req, JsonNode.class);
-
-            if (resp == null || resp.getBody() == null) {
-                throw new RuntimeException("Empty response from scorer service");
-            }
-
-            JsonNode bodyNode = resp.getBody();
-
-            PronounceGradeResponse res = new PronounceGradeResponse();
-            // Map server response to your DTO (adjust if JSON keys different)
-            res.setScore(bodyNode.get("score").asInt());
-            // convert grade to expected english codes if necessary (server might return VN strings).
-            String gradeStr = bodyNode.has("grade") ? bodyNode.get("grade").asText() : "";
-            res.setGrade(bodyNode.get("grade").asText());
-            res.setFeedback("Similarity=" + (bodyNode.has("similarity") ? bodyNode.get("similarity").asDouble() : 0.0));
-            return res;
-        } finally {
-            // cleanup temp files
-            for (File f : new File[]{userRaw, refRaw, userFile, refFile}) {
-                try {
-                    if (f != null && f.exists()) f.delete();
-                } catch (Exception ignored) {}
-            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Trả về lỗi chung nếu có sự cố
+            throw new RuntimeException("Lỗi xử lý phát âm: " + e.getMessage());
         }
     }
 
+    // --- Các hàm phụ trợ ---
 
+    private String uploadFileToAssemblyAI(MultipartFile file) throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", apiKey);
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
 
+        HttpEntity<byte[]> requestEntity = new HttpEntity<>(file.getBytes(), headers);
 
+        ResponseEntity<Map> response = restTemplate.exchange(UPLOAD_URL, HttpMethod.POST, requestEntity, Map.class);
+
+        if (response.getBody() == null || !response.getBody().containsKey("upload_url")) {
+            throw new RuntimeException("Upload failed");
+        }
+        return (String) response.getBody().get("upload_url");
+    }
+
+    private String requestTranscription(String audioUrl) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", apiKey);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("audio_url", audioUrl);
+        // Tắt tính năng thêm dấu câu/format để so sánh raw text dễ hơn
+        body.put("punctuate", false);
+        body.put("format_text", false);
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        ResponseEntity<Map> response = restTemplate.postForEntity(TRANSCRIPT_URL, requestEntity, Map.class);
+
+        if (response.getBody() == null || !response.getBody().containsKey("id")) {
+            throw new RuntimeException("Transcription request failed");
+        }
+        return (String) response.getBody().get("id");
+    }
+
+    private String pollForTranscriptionResult(String transcriptId) throws InterruptedException {
+        String pollingUrl = TRANSCRIPT_URL + "/" + transcriptId;
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", apiKey);
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        while (true) {
+            ResponseEntity<Map> response = restTemplate.exchange(pollingUrl, HttpMethod.GET, entity, Map.class);
+            Map<String, Object> body = response.getBody();
+
+            if (body == null) throw new RuntimeException("Empty response from polling");
+
+            String status = (String) body.get("status");
+            if ("completed".equals(status)) {
+                // Trả về text, nếu null (người dùng không nói gì) thì trả về chuỗi rỗng
+                return (String) body.getOrDefault("text", "");
+            } else if ("error".equals(status)) {
+                throw new RuntimeException("Transcription failed: " + body.get("error"));
+            }
+
+            // Đợi 1 giây trước khi hỏi lại
+            Thread.sleep(1000);
+        }
+    }
+
+    private PronounceGradeResponse calculateScore(String targetWord, String userText) {
+        // Chuẩn hóa chuỗi (chữ thường, bỏ khoảng trắng thừa)
+        String s1 = targetWord.trim().toLowerCase();
+        String s2 = (userText == null) ? "" : userText.trim().toLowerCase();
+
+        // Loại bỏ dấu câu nếu còn sót
+        s2 = s2.replaceAll("[^a-zA-Z0-9 ]", "");
+
+        System.out.println("Target: " + s1 + " | User: " + s2);
+
+        // Trường hợp người dùng không nói gì
+        if (s2.isEmpty()) {
+            return new PronounceGradeResponse("INACCURATE", 0, "Không nghe thấy giọng nói");
+        }
+
+        // Tính khoảng cách Levenshtein
+        LevenshteinDistance levenshtein = new LevenshteinDistance();
+        int distance = levenshtein.apply(s1, s2);
+
+        // Tính điểm % tương đồng
+        int maxLength = Math.max(s1.length(), s2.length());
+        if (maxLength == 0) maxLength = 1; // tránh chia cho 0
+
+        double similarity = (1.0 - ((double) distance / maxLength)) * 100;
+        int score = (int) similarity;
+
+        // Logic xếp loại (Logic tương đối như bạn muốn)
+        String grade;
+        String feedback;
+
+        if (score >= 90) {
+            grade = "ACCURATE"; // Tuyệt vời
+            feedback = "Tuyệt vời! (" + s2 + ")";
+        } else if (score >= 50) {
+            // Ví dụ: red (3) vs re (2) -> distance=1 -> score ~ 66% -> ALMOST
+            grade = "ALMOST";   // Gần đúng
+            feedback = "Gần đúng rồi (" + s2 + ")";
+        } else {
+            grade = "INACCURATE"; // Sai
+            feedback = "Chưa chính xác (" + s2 + ")";
+        }
+
+        return new PronounceGradeResponse(grade, score, feedback);
+    }
 }

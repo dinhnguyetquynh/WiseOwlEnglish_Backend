@@ -1,6 +1,7 @@
 package com.iuh.WiseOwlEnglish_Backend.controller;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.request.UpdateLessonRequest;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.CreateLessonRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.SentenceRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.LessonDetail;
@@ -63,5 +64,13 @@ public class LessonAdminController {
 
         CreateLessonRes result = adminService.updateLessonActiveStatus(id, isActive);
         return ResponseEntity.ok(result);
+    }
+    @PutMapping("/update/{id}")
+    public ResponseEntity<LessonRes> updateLesson(
+            @PathVariable Long id,
+            @RequestBody UpdateLessonRequest request) {
+
+        LessonRes updatedLesson = adminService.updateLesson(id, request);
+        return ResponseEntity.ok(updatedLesson);
     }
 }

@@ -50,4 +50,6 @@ public interface GameQuestionRepository extends JpaRepository<GameQuestion,Long>
 
     // Kiểm tra xem Vocab/Sentence có đang được dùng làm Prompt (đề bài) không
     boolean existsByPromptTypeAndPromptRefIdAndDeletedAtIsNull(PromptType promptType, Long promptRefId);
+
+    long countByDeletedAtIsNull();
 }

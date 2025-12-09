@@ -9,10 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -28,29 +25,12 @@ public class PronounceController {
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public ResponseEntity<?> score(
+    public ResponseEntity<PronounceGradeResponse> score(
             @RequestPart("audioUser") MultipartFile audioUser,
-            @RequestPart("audioRef") MultipartFile audioRef
+            @RequestParam("targetText") String targetText // <-- Thay đổi ở đây
     ) {
-        try {
-            if (audioUser == null || audioUser.isEmpty()) {
-                return ResponseEntity.badRequest().body("audioUser is required");
-            }
-            if (audioRef == null || audioRef.isEmpty()) {
-                return ResponseEntity.badRequest().body("audioRef is required");
-            }
-
-            PronounceGradeResponse result = pronounceService.score(audioUser, audioRef);
-            return ResponseEntity.ok(result);
-
-        } catch (IllegalArgumentException ex) {
-            log.warn("Invalid request to /api/pronounce/score: {}", ex.getMessage(), ex);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
-        } catch (Exception ex) {
-            log.error("Failed to score pronunciation", ex);
-            // 502 Bad Gateway if scorer service or conversion fails externally
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body("Failed to score pronunciation: " + ex.getMessage());
-        }
+        // Gọi service xử lý
+        PronounceGradeResponse result = pronounceService.scorePronunciation(audioUser, targetText);
+        return ResponseEntity.ok(result);
     }
 }

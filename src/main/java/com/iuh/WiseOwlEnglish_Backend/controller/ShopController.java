@@ -1,6 +1,8 @@
 package com.iuh.WiseOwlEnglish_Backend.controller;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.ShopDataRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.StickerRes;
+import com.iuh.WiseOwlEnglish_Backend.model.Sticker;
 import com.iuh.WiseOwlEnglish_Backend.service.ShopService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,5 +29,10 @@ public class ShopController {
     public ResponseEntity<Void> equipSticker(@RequestParam Long learnerId, @RequestParam Long stickerId) {
         shopService.equipSticker(learnerId, stickerId);
         return ResponseEntity.ok().build();
+    }
+    @PostMapping("/reward-epic")
+    public ResponseEntity<StickerRes> rewardEpicSticker(@RequestParam Long learnerId) {
+        StickerRes sticker = shopService.rewardRandomEpicSticker(learnerId);
+        return ResponseEntity.ok(sticker);
     }
 }

@@ -58,6 +58,7 @@ public class LessonProgress {
     //add status for lesson progress(active, completed, not started)
 
     @Column(name = "status")
+    @Enumerated(EnumType.STRING)
     private LessonProgressStatus status;
 
 }

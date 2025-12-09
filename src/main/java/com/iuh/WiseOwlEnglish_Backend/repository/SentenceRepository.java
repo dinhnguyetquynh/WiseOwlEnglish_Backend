@@ -21,4 +21,6 @@ public interface SentenceRepository extends JpaRepository<Sentence, Long> {
 
     @Query("SELECT COALESCE(MAX(s.orderIndex), 0) FROM Sentence s WHERE s.lessonSentence.id = :lessonId")
     int findMaxOrderIndexByLessonId(@Param("lessonId") Long lessonId);
+
+    long countByDeletedAtIsNull();
 }

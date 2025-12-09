@@ -3,6 +3,7 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.enums.ItemStatus;
 import com.iuh.WiseOwlEnglish_Backend.enums.ItemType;
+import com.iuh.WiseOwlEnglish_Backend.enums.LessonProgressStatus;
 import com.iuh.WiseOwlEnglish_Backend.model.LessonProgress;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import jakarta.transaction.Transactional;
@@ -79,14 +80,37 @@ public class LessonCalculatorService {
         LessonProgress lessonProgress = lessonProgressRepo
                 .findByLearnerProfile_IdAndLesson_Id(learnerProfileId, lessonId)
                 .orElse(new LessonProgress()); // Tạo mới nếu đây là lần đầu học
+        // Nếu là record mới tinh (chưa có status), set mặc định là NOT_STARTED
+        if (lessonProgress.getStatus() == null) {
+            lessonProgress.setStatus(LessonProgressStatus.NOT_STARTED);
+        }
 
         lessonProgress.setLearnerProfile(learnerProfileRepo.getReferenceById(learnerProfileId));
         lessonProgress.setLesson(lessonRepo.getReferenceById(lessonId));
+
         lessonProgress.setPercentComplete(Math.min(100.0, percentage)); // Đảm bảo không vượt quá 100
         lessonProgress.setLastItemType(lastItemType);
         lessonProgress.setLastItemRefId(lastItemRefId); // ❗️ Vẫn cần chú ý ép kiểu Long về int ở đây
         lessonProgress.setUpdatedAt(LocalDateTime.now());
         // (Bạn có thể set thêm lastItemIndex nếu cần)
+        if (percentage >= 100.0) {
+            // Trường hợp 1: Đã hoàn thành 100% -> Chắc chắn là COMPLETED
+            lessonProgress.setStatus(LessonProgressStatus.COMPLETED);
+        } else {
+            // Trường hợp 2: Chưa được 100%
+            // Kiểm tra xem trước đó đã COMPLETED chưa?
+            // Nếu ĐÃ COMPLETED rồi (đang ôn lại bài cũ), thì KHÔNG đổi trạng thái.
+            // Nếu CHƯA COMPLETED, thì mới xét tiếp:
+            if (lessonProgress.getStatus() != LessonProgressStatus.COMPLETED) {
+                if (percentage > 0.0) {
+                    // Có tiến độ > 0 -> IN_PROGRESS
+                    lessonProgress.setStatus(LessonProgressStatus.ACTIVE);
+                } else {
+                    // Tiến độ = 0 -> NOT_STARTED
+                    lessonProgress.setStatus(LessonProgressStatus.NOT_STARTED);
+                }
+            }
+        }
 
         lessonProgressRepo.save(lessonProgress);
     }

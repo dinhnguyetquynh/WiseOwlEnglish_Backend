@@ -15,6 +15,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UploadController {
     private final CloudinaryService cloudinaryService;
+
+    @PostMapping("/lesson/img-mascot")
+    public ResponseEntity<Map<String, String>> uploadMascotImg(@RequestParam("file") MultipartFile file) {
+        String url = cloudinaryService.uploadImage(file, "foruser/mascot");
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
+
     @PostMapping("/avatar")
     public ResponseEntity<Map<String, String>> uploadAvatar(
             @RequestPart("file") MultipartFile file,
@@ -40,11 +48,6 @@ public class UploadController {
         return ResponseEntity.ok(Map.of("url", url));
     }
 
-    @PostMapping("/lesson/img-mascot")
-    public ResponseEntity<Map<String, String>> uploadMascotImg(@RequestParam("file") MultipartFile file) {
-        String url = cloudinaryService.uploadImage(file, "foruser/mascot");
-        return ResponseEntity.ok(Map.of("url", url));
-    }
 
 
 

@@ -1,10 +1,12 @@
 package com.iuh.WiseOwlEnglish_Backend.repository;
 
+import com.iuh.WiseOwlEnglish_Backend.enums.LessonProgressStatus;
 import com.iuh.WiseOwlEnglish_Backend.model.LessonProgress;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,4 +23,16 @@ public interface LessonProgressRepository extends JpaRepository<LessonProgress, 
     List<LessonProgress> findByLesson_Id(Long lessonId);
     @Query("SELECT COUNT(lp) FROM LessonProgress lp WHERE lp.lesson.id = :lessonId AND lp.percentComplete >= 100")
     long countCompletedByLessonId(@Param("lessonId") Long lessonId);
+
+    @Query("SELECT function('DATE', lp.updatedAt) as statDate, COUNT(lp) as total " +
+            "FROM LessonProgress lp " +
+            "WHERE lp.status = :status " +
+            "AND lp.updatedAt BETWEEN :startDate AND :endDate " +
+            "GROUP BY function('DATE', lp.updatedAt) " +
+            "ORDER BY function('DATE', lp.updatedAt) ASC")
+    List<Object[]> countCompletedLessonsByDateRange(
+            @Param("status") LessonProgressStatus status,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
+    );
 }

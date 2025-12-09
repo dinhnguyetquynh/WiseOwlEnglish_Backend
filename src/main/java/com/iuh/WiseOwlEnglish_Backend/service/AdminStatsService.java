@@ -1,16 +1,18 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.GradeDistribution;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.GradeReportRes;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.LearnerStatsRes;
-import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.LessonStatsRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.stats.*;
+import com.iuh.WiseOwlEnglish_Backend.enums.LessonProgressStatus;
+import com.iuh.WiseOwlEnglish_Backend.model.GameQuestion;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,6 +26,11 @@ public class AdminStatsService {
     private final LessonRepository lessonRepo;
     private final LessonProgressRepository lessonProgressRepo;
     private final TestAttemptRepository testAttemptRepo;
+
+    private final SentenceRepository sentenceRepository;
+    private final VocabularyRepository vocabularyRepository;
+    private final GameQuestionRepository gameQuestionRepository;
+    private final TestQuestionRepository testQuestionRepository;
     // 1. Thống kê người học
     @Transactional(readOnly = true)
     // Sửa signature hàm để nhận year
@@ -95,4 +102,74 @@ public class AdminStatsService {
         // Trả về Object bao gồm cả tổng số học sinh
         return new GradeReportRes(totalStudentsInGrade, statsList);
     }
+
+    public DataRes getTotalData(){
+        long totalLesson = lessonRepo.countByDeletedAtIsNull();
+        long totalVocab = vocabularyRepository.countByDeletedAtIsNull();
+        long totalSen = sentenceRepository.countByDeletedAtIsNull();
+        long totalGameQues = gameQuestionRepository.countByDeletedAtIsNull();
+        long totalTestQues = testQuestionRepository.count();
+
+        DataRes dataRes = new DataRes();
+        dataRes.setTotalLessons(totalLesson);
+        dataRes.setTotalVocabularies(totalVocab);
+        dataRes.setTotalSentences(totalSen);
+        dataRes.setTotalGameQuestions(totalGameQues);
+        dataRes.setTotalTestQuestions(totalTestQues);
+        return dataRes;
+    }
+
+    public List<DailyStatRes> getLearningActivityStats(LocalDate startDate, LocalDate endDate) {
+        // 1. Lấy dữ liệu thô từ DB (chỉ chứa những ngày có người học)
+        List<Object[]> rawData = lessonProgressRepo.countCompletedLessonsByDateRange(
+                LessonProgressStatus.COMPLETED,
+                startDate.atStartOfDay(),
+                endDate.atTime(23, 59, 59)
+        );
+
+        // 2. Chuyển đổi dữ liệu DB sang Map để dễ tra cứu <Ngày, Số lượng>
+        Map<String, Long> statMap = new HashMap<>();
+        for (Object[] row : rawData) {
+            // Lưu ý: Tùy database mà kiểu dữ liệu ngày trả về có thể khác nhau (java.sql.Date hoặc String)
+            String dateKey = row[0].toString();
+            Long count = ((Number) row[1]).longValue();
+            statMap.put(dateKey, count);
+        }
+
+        // 3. Tạo danh sách đầy đủ các ngày từ start đến end (để ngày nào không có thì set = 0)
+        List<DailyStatRes> result = new ArrayList<>();
+        LocalDate current = startDate;
+
+        DateTimeFormatter dbFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd"); // Format key so sánh
+        DateTimeFormatter displayFormat = DateTimeFormatter.ofPattern("dd/MM"); // Format hiển thị FE
+
+        while (!current.isAfter(endDate)) {
+            String key = current.format(dbFormat);
+            long count = statMap.getOrDefault(key, 0L);
+
+            // Thêm thứ vào tên ngày cho dễ nhìn (VD: T2 10/12)
+            String dayName = getVietnameseDayName(current);
+            String label = dayName + " " + current.format(displayFormat);
+
+            result.add(new DailyStatRes(label, count));
+            current = current.plusDays(1);
+        }
+
+        return result;
+    }
+
+    private String getVietnameseDayName(LocalDate date) {
+        switch (date.getDayOfWeek()) {
+            case MONDAY: return "T2";
+            case TUESDAY: return "T3";
+            case WEDNESDAY: return "T4";
+            case THURSDAY: return "T5";
+            case FRIDAY: return "T6";
+            case SATURDAY: return "T7";
+            case SUNDAY: return "CN";
+            default: return "";
+        }
+    }
+
+
 }
