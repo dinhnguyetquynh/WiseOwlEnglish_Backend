@@ -115,7 +115,10 @@ public class GradeProgressService {
             }
 
             // Lấy điểm test từ Map (hoặc 0 nếu chưa làm)
-            double score = lastTestScoreMap.getOrDefault(lesson.getId(), 0.0);
+//            double score = lastTestScoreMap.getOrDefault(lesson.getId(), 0.0);
+
+            // ✅ Mới: Lấy trực tiếp, nếu không có key thì trả về null
+            Double score = lastTestScoreMap.get(lesson.getId());
             lessonDTO.setLastTestScore(score);
 
             lessonProgressList.add(lessonDTO);

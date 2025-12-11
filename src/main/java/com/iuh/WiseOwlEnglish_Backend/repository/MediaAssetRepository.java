@@ -39,5 +39,12 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, Long> {
             "where m.mediaType = :mediaType and s.lessonSentence.id = :lessonId")
     List<MediaAssetForAdminDto> findAssetSentenceBySentenceLessonId(@Param("mediaType") MediaType mediaType,
                                                                     @Param("lessonId") Long lessonId);
+
+    // 1. Tìm MediaAsset theo vocabId có mediaType là IMAGE
+    // Chúng ta sử dụng List vì một từ vựng có thể có nhiều ảnh (tùy logic của bạn)
+    MediaAsset findByVocabularyIdAndMediaType(Long vocabularyId, MediaType mediaType);
+
+    // 2 & 3. Tìm MediaAsset theo vocabId, mediaType và tag (Dùng cho cả 'normal' và 'slow')
+    MediaAsset findByVocabularyIdAndMediaTypeAndTag(Long vocabularyId, MediaType mediaType, String tag);
 }
 

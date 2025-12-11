@@ -1,8 +1,10 @@
 package com.iuh.WiseOwlEnglish_Backend.controller;
 
+import com.iuh.WiseOwlEnglish_Backend.dto.request.VocabUpdateReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.CreateVocabReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.VocabRes;
 import com.iuh.WiseOwlEnglish_Backend.service.VocabServiceAdmin;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,15 @@ public class VocabAminController {
     public ResponseEntity<String> deleteVocab(@PathVariable Long id) {
         String message = vocabServiceAdmin.deleteVocab(id);
         return ResponseEntity.ok(message);
+    }
+
+    @PutMapping("/update/{id}")
+    public ResponseEntity<VocabRes> updateVocabulary(
+            @PathVariable Long id,
+            @RequestBody VocabUpdateReq request // @Valid sẽ kích hoạt kiểm tra lỗi
+    ) {
+        VocabRes response = vocabServiceAdmin.updateVocabulary(id, request);
+        return ResponseEntity.ok(response);
     }
 
 

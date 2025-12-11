@@ -85,4 +85,7 @@ public interface GameAttemptRepository extends JpaRepository<GameAttempt, Long> 
     //Kiểm tra xem Game đã có ai chơi chưa
     boolean existsByGame_Id(Long gameId);
 
+    @Query("SELECT COALESCE(SUM(g.rewardCount), 0) FROM GameAttempt g WHERE g.learnerProfile.id = :learnerId")
+    Long sumRewardCountByLearnerId(@Param("learnerId") Long learnerId);
+
 }

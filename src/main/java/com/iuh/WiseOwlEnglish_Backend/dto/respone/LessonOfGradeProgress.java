@@ -8,5 +8,5 @@ public class LessonOfGradeProgress {
     private String unitName;
     private String lessonName;
     private int lessonProgress;
-    private double lastTestScore;
+    private Double lastTestScore;
 }

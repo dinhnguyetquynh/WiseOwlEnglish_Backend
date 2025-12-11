@@ -1,5 +1,6 @@
 package com.iuh.WiseOwlEnglish_Backend.service;
 
+import com.iuh.WiseOwlEnglish_Backend.dto.request.VocabUpdateReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.CreateVocabReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.VocabRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.*;
@@ -60,7 +61,22 @@ public class VocabServiceAdmin {
         vocabRes.setId(vocabulary.getId());
         vocabRes.setOrderIndex(vocabulary.getOrderIndex());
         vocabRes.setTerm_en(vocabulary.getTerm_en());
+        vocabRes.setTerm_vi(vocabulary.getTerm_vi());
         vocabRes.setPartOfSpeech(vocabulary.getPartOfSpeech());
+        vocabRes.setPhonetic(vocabulary.getPhonetic());
+        vocabRes.setForLearning(vocabulary.isForLearning());
+        // 1. Xử lý Image
+        MediaAsset mediaImg = mediaAssetRepository.findByVocabularyIdAndMediaType(vocabulary.getId(), MediaType.IMAGE);
+        // Nếu mediaImg khác null thì lấy URL, ngược lại thì gán null
+        vocabRes.setImgUrl(mediaImg != null ? mediaImg.getUrl() : null);
+
+        // 2. Xử lý Audio Normal
+        MediaAsset audioNormal = mediaAssetRepository.findByVocabularyIdAndMediaTypeAndTag(vocabulary.getId(), MediaType.AUDIO, "normal");
+        vocabRes.setAudioNormal(audioNormal != null ? audioNormal.getUrl() : null);
+
+        // 3. Xử lý Audio Slow
+        MediaAsset audioSlow = mediaAssetRepository.findByVocabularyIdAndMediaTypeAndTag(vocabulary.getId(), MediaType.AUDIO, "slow");
+        vocabRes.setAudioSlow(audioSlow != null ? audioSlow.getUrl() : null);
         return vocabRes;
     }
     // Khi tạo Vocab -> Xóa cache đếm Vocab của lesson đó
@@ -230,6 +246,56 @@ public class VocabServiceAdmin {
             eventPublisher.publishEvent(new LessonContentChangedEvent(this, lessonId));
             return "Hard Deleted: Từ vựng đã được xóa vĩnh viễn.";
         }
+    }
+
+    public VocabRes updateVocabulary(Long id, VocabUpdateReq req) {
+        // 1. Tìm từ vựng, nếu không thấy thì báo lỗi
+        Vocabulary vocab = vocabularyRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy từ vựng với ID: " + id));
+
+        // 2. Cập nhật các trường dữ liệu từ Request
+        vocab.setTerm_en(req.getTerm_en());
+        vocab.setTerm_vi(req.getTerm_vi());
+        vocab.setPhonetic(req.getPhonetic());
+        vocab.setPartOfSpeech(req.getPartOfSpeech());
+        vocab.setForLearning(req.isForLearning());
+
+        MediaAsset mediaImg = mediaAssetRepository.findByVocabularyIdAndMediaType(vocab.getId(),MediaType.IMAGE);
+        mediaImg.setUrl(req.getImgUrl());
+
+        MediaAsset mediaAudioNormal = mediaAssetRepository.findByVocabularyIdAndMediaTypeAndTag(vocab.getId(),MediaType.AUDIO,"normal");
+        mediaAudioNormal.setUrl(req.getAudioNormal());
+
+
+        MediaAsset mediaAudioSlow = mediaAssetRepository.findByVocabularyIdAndMediaTypeAndTag(vocab.getId(),MediaType.AUDIO,"slow");
+        mediaAudioSlow.setUrl(req.getAudioSlow());
+
+        // 3. Hệ thống tự cập nhật thời gian
+        vocab.setUpdatedAt(LocalDateTime.now());
+
+        // 4. Lưu xuống database
+        Vocabulary savedVocab = vocabularyRepository.save(vocab);
+
+        // 5. Trả về DTO
+        VocabRes res = new VocabRes();
+        res.setId(savedVocab.getId());
+        res.setOrderIndex(savedVocab.getOrderIndex());
+        res.setTerm_en(savedVocab.getTerm_en());
+        res.setTerm_vi(savedVocab.getTerm_vi());
+        res.setPhonetic(savedVocab.getPhonetic());
+        res.setPartOfSpeech(savedVocab.getPartOfSpeech());
+        MediaAsset mediaImgRes = mediaAssetRepository.findByVocabularyIdAndMediaType(savedVocab.getId(),MediaType.IMAGE);
+        res.setImgUrl(mediaImgRes.getUrl());
+
+        MediaAsset mediaAudioNormalRes = mediaAssetRepository.findByVocabularyIdAndMediaTypeAndTag(savedVocab.getId(),MediaType.AUDIO,"normal");
+        res.setAudioNormal(mediaAudioNormalRes.getUrl());
+
+        MediaAsset mediaAudioSlowRes = mediaAssetRepository.findByVocabularyIdAndMediaTypeAndTag(savedVocab.getId(),MediaType.AUDIO,"slow");
+        res.setAudioSlow(mediaAudioNormalRes.getUrl());
+
+        res.setForLearning(savedVocab.isForLearning());
+
+        return res;
     }
 
 }

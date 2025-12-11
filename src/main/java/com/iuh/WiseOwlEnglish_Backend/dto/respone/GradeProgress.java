@@ -6,6 +6,7 @@ import java.util.List;
 
 @Data
 public class GradeProgress {
+
     private int orderIndex;
     private int lessonsLearned;
     private int rewardScore;

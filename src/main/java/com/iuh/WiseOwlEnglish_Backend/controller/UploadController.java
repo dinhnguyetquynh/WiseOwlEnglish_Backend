@@ -16,6 +16,18 @@ import java.util.Map;
 public class UploadController {
     private final CloudinaryService cloudinaryService;
 
+    @PostMapping("/lesson/audio")
+    public ResponseEntity<Map<String, String>> uploadLessonAudio(@RequestParam("file") MultipartFile file) {
+        String url = cloudinaryService.uploadAudio(file, "foruser/lessonAudio");
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
+    @PostMapping("/lesson/img")
+    public ResponseEntity<Map<String, String>> uploadLessonImg(@RequestParam("file") MultipartFile file) {
+        String url = cloudinaryService.uploadImage(file, "foruser/lessonImg");
+        return ResponseEntity.ok(Map.of("url", url));
+    }
+
     @PostMapping("/lesson/img-mascot")
     public ResponseEntity<Map<String, String>> uploadMascotImg(@RequestParam("file") MultipartFile file) {
         String url = cloudinaryService.uploadImage(file, "foruser/mascot");
@@ -36,17 +48,7 @@ public class UploadController {
         return ResponseEntity.ok(Map.of("url", url));
     }
 
-    @PostMapping("/lesson/audio")
-    public ResponseEntity<Map<String, String>> uploadLessonAudio(@RequestParam("file") MultipartFile file) {
-        String url = cloudinaryService.uploadAudio(file, "foruser/lessonAudio");
-        return ResponseEntity.ok(Map.of("url", url));
-    }
 
-    @PostMapping("/lesson/img")
-    public ResponseEntity<Map<String, String>> uploadLessonImg(@RequestParam("file") MultipartFile file) {
-        String url = cloudinaryService.uploadImage(file, "foruser/lessonImg");
-        return ResponseEntity.ok(Map.of("url", url));
-    }
 
 
 

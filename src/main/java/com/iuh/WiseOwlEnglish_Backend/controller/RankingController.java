@@ -22,14 +22,7 @@ public class RankingController {
     public ResponseEntity<RankingRes> getGlobalRanking(
             @RequestParam Long profileId
     ) {
-        // Security check: Đảm bảo profileId này thuộc về user đã đăng nhập
-//        boolean isOwner = learnerProfileRepository.findById(profileId)
-//                .map(profile -> profile.getUserAccount().getId().equals(userDetails.getId()))
-//                .orElse(false);
-//
-//        if (!isOwner) {
-//            throw new ApiException(ErrorCode.FORBIDDEN, HttpStatus.FORBIDDEN, "Bạn không có quyền xem hồ sơ này.");
-//        }
+
 
         RankingRes response = rankingService.getGlobalRanking(profileId);
         return ResponseEntity.ok(response);

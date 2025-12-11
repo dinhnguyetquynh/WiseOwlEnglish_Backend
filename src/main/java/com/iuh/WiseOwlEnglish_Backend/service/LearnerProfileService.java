@@ -2,6 +2,7 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLearnerProfileReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.LearnerProfileReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.LearnerPointsResponse;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.LearnerProfileRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.ProfileByLearnerRes;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.ProfileRes;
@@ -12,10 +13,7 @@ import com.iuh.WiseOwlEnglish_Backend.model.GradeLevel;
 import com.iuh.WiseOwlEnglish_Backend.model.LearnerGradeProgress;
 import com.iuh.WiseOwlEnglish_Backend.model.LearnerProfile;
 import com.iuh.WiseOwlEnglish_Backend.model.UserAccount;
-import com.iuh.WiseOwlEnglish_Backend.repository.GradeLevelRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.LearnerGradeProgressRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.LearnerProfileRepository;
-import com.iuh.WiseOwlEnglish_Backend.repository.UserAccountRepository;
+import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,7 +33,7 @@ public class LearnerProfileService {
 
     private final GradeLevelRepository gradeRepo;
     private final LearnerGradeProgressRepository progressRepo;
-
+    private final GameAttemptRepository gameAttemptRepository;
 
 
     @Transactional
@@ -214,5 +212,20 @@ public class LearnerProfileService {
 
         return res;
     }
+    public LearnerPointsResponse getLearnerPoints(Long learnerId) {
+        // 1. Lấy thông tin LearnerProfile để có pointBalance
+        LearnerProfile learnerProfile = learnerProfileRepo.findById(learnerId)
+                .orElseThrow(() -> new RuntimeException("Learner not found with id: " + learnerId));
+
+        // 2. Tính tổng rewardCount từ lịch sử chơi game
+        Long totalRewards = gameAttemptRepository.sumRewardCountByLearnerId(learnerId);
+
+        // 3. Trả về DTO
+        return LearnerPointsResponse.builder()
+                .pointBalance(learnerProfile.getPointBalance())
+                .totalRewardCount(totalRewards)
+                .build();
+    }
+
 
 }
