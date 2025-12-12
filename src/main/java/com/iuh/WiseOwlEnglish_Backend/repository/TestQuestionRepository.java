@@ -11,6 +11,15 @@ import java.util.List;
 
 @Repository
 public interface TestQuestionRepository extends JpaRepository<TestQuestion, Long> {
+
+    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END " +
+            "FROM TestQuestion t " +
+            "WHERE t.stemType = :stemType " +
+            "AND t.stemRefId = :stemRefId " +
+            "AND t.deletedAt IS NULL")
+    boolean existsByStemTypeAndStemRefId(@Param("stemType") StemType stemType,
+                                         @Param("stemRefId") Long stemRefId);
+
     @Query("SELECT tq FROM TestQuestion tq WHERE tq.test.id = :testId ORDER BY tq.orderInTest ASC")
     List<TestQuestion> findByTestIdOrderByOrderInTest(@Param("testId") Long testId);
 
@@ -26,6 +35,6 @@ public interface TestQuestionRepository extends JpaRepository<TestQuestion, Long
     int findMaxOrderInTestByTestId(@Param("testId") Long testId);
 
     // Kiểm tra xem Vocab/Sentence có đang được dùng làm Stem (đề bài) không
-    boolean existsByStemTypeAndStemRefId(StemType stemType, Long stemRefId);
+
 
 }

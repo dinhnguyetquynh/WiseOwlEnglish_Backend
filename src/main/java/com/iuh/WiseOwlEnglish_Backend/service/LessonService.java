@@ -93,7 +93,7 @@ public class LessonService {
 
     public List<LessonByGradeRes> getListLessonByGrade(long gradeId){
         // SỬA: Thêm DeletedAtIsNull
-        List<Lesson> lessonList = lessonRepository.findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(gradeId);
+        List<Lesson> lessonList = lessonRepository. findAllByGradeLevel_IdAndActiveTrueAndDeletedAtIsNullOrderByOrderIndexAsc(gradeId);
         List<LessonByGradeRes> lessonByGradeRes = new ArrayList<>();
         for(Lesson lesson:lessonList){
             LessonByGradeRes res = new LessonByGradeRes();
@@ -167,7 +167,7 @@ public class LessonService {
         ProgressStatus gradeStatus = (lgp != null) ? lgp.getStatus() : ProgressStatus.LOCKED;
 
         // 3. Danh sách lesson theo grade
-        List<Lesson> lessons = lessonRepo.findByGradeLevel_IdAndDeletedAtIsNullOrderByOrderIndexAsc(g.getId());
+        List<Lesson> lessons = lessonRepo. findAllByGradeLevel_IdAndActiveTrueAndDeletedAtIsNullOrderByOrderIndexAsc(g.getId());
 
         // 4. Map DTO
         List<LessonBriefRes> items = new ArrayList<>(lessons.size());

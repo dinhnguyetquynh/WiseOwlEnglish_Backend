@@ -2,7 +2,11 @@ package com.iuh.WiseOwlEnglish_Backend.service;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateLessonReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.request.CreateSentenceReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.request.SentenceUpdateReq;
+import com.iuh.WiseOwlEnglish_Backend.dto.request.VocabUpdateReq;
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.SentenceAdminRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.SentenceUpdateRes;
+import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.VocabRes;
 import com.iuh.WiseOwlEnglish_Backend.enums.*;
 import com.iuh.WiseOwlEnglish_Backend.event.LessonContentChangedEvent;
 import com.iuh.WiseOwlEnglish_Backend.exception.BadRequestException;
@@ -10,6 +14,7 @@ import com.iuh.WiseOwlEnglish_Backend.exception.NotFoundException;
 import com.iuh.WiseOwlEnglish_Backend.model.Lesson;
 import com.iuh.WiseOwlEnglish_Backend.model.MediaAsset;
 import com.iuh.WiseOwlEnglish_Backend.model.Sentence;
+import com.iuh.WiseOwlEnglish_Backend.model.Vocabulary;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -47,7 +52,7 @@ public class SentenceAdminService {
     private final ApplicationEventPublisher eventPublisher;
 
     public List<SentenceAdminRes> getListSentence(long lessonId){
-        List<Sentence> sentenceList = sentenceRepository.findByLessonSentence_Id(lessonId);
+        List<Sentence> sentenceList = sentenceRepository.findByLessonSentenceIdAndDeletedAtIsNullOrderByOrderIndexAsc(lessonId);
 
         List<SentenceAdminRes> sentenceResList = new ArrayList<>();
         for(Sentence sentence: sentenceList){
@@ -62,6 +67,16 @@ public class SentenceAdminService {
         res.setId(sentence.getId());
         res.setOrderIndex(sentence.getOrderIndex());
         res.setSen_en(sentence.getSentence_en());
+        res.setSen_vi(sentence.getSentence_vi());
+        res.setForLearning(sentence.isForLearning());
+        MediaAsset imgUrl = mediaAssetRepository.findBySentenceIdAndMediaType(sentence.getId(), MediaType.IMAGE);
+        res.setImgUrl(imgUrl.getUrl());
+
+        MediaAsset audioNormal = mediaAssetRepository.findBySentenceIdAndMediaTypeAndTag(sentence.getId(),MediaType.AUDIO,"normal");
+        res.setAudioNormal(audioNormal.getUrl());
+
+        MediaAsset slowNormal = mediaAssetRepository.findBySentenceIdAndMediaTypeAndTag(sentence.getId(),MediaType.AUDIO,"slow");
+        res.setAudioSlow(slowNormal.getUrl());
         return res;
     }
 
@@ -221,4 +236,83 @@ public class SentenceAdminService {
         }
     }
 
+    @Transactional(rollbackFor = Exception.class) // 1. Thêm annotation này
+    public SentenceUpdateRes updateSentence(Long id, SentenceUpdateReq req) {
+        // --- PHẦN 1: VALIDATION ---
+
+        // 1. Tìm từ vựng
+        Sentence sentence = sentenceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy sentence có id: " + id));
+
+        // 2. Check Lesson Active
+        Lesson lesson = sentence.getLessonSentence();
+        if (lesson != null && Boolean.TRUE.equals(lesson.isActive())) {
+            throw new BadRequestException("Không thể cập nhật câu khi bài học đang KÍCH HOẠT (Public). Vui lòng tắt kích hoạt bài học.");
+        }
+
+        // 3. Check Game & Test Constraints
+        checkGameAndTestConstraints(sentence.getId()); // Mình gom gọn logic check vào hàm riêng cho sạch code nếu cần
+
+        // 4. Check Ràng buộc người học
+        boolean hasLearned = contentProgressRepo.existsByItemTypeAndItemRefId(ItemType.SENTENCE, sentence.getId());
+        boolean hasErrorLog = incorrectItemLogRepo.existsByItemTypeAndItemRefId(ItemType.SENTENCE, sentence.getId());
+
+        if (hasLearned || hasErrorLog) {
+            throw new BadRequestException("Câu này đã có người học. Vui lòng không cập nhật.");
+        }
+
+        // --- PHẦN 2: UPDATE DATA ---
+
+        // Cập nhật thông tin Sentence
+        sentence.setSentence_en(req.getSen_en());
+        sentence.setSentence_vi(req.getSen_vi());
+        sentence.setUpdatedAt(LocalDateTime.now());
+
+        // Cập nhật MediaAsset
+        // Lưu ý: Nhờ @Transactional, các thay đổi setUrl dưới đây sẽ tự động được update xuống DB
+        MediaAsset imgMedia = mediaAssetRepository.findBySentenceIdAndMediaType(sentence.getId(), MediaType.IMAGE);
+        if (imgMedia != null) imgMedia.setUrl(req.getImgUrl()); // Nên check null để an toàn
+
+        MediaAsset normalAudio = mediaAssetRepository.findBySentenceIdAndMediaTypeAndTag(sentence.getId(), MediaType.AUDIO, "normal");
+        if (normalAudio != null) normalAudio.setUrl(req.getAudioNormal());
+
+        MediaAsset slowAudio = mediaAssetRepository.findBySentenceIdAndMediaTypeAndTag(sentence.getId(), MediaType.AUDIO, "slow");
+        if (slowAudio != null) slowAudio.setUrl(req.getAudioSlow());
+
+        // Lưu Sentence (MediaAsset sẽ tự được lưu nhờ Dirty Checking của Transaction)
+        Sentence saved = sentenceRepository.save(sentence);
+
+        // --- PHẦN 3: RESPONSE ---
+
+        SentenceUpdateRes res = new SentenceUpdateRes();
+        res.setId(saved.getId());
+        res.setForLearning(saved.isForLearning());
+        res.setOrderIndex(saved.getOrderIndex());
+        res.setSentence_en(saved.getSentence_en());
+        res.setSentence_vi(saved.getSentence_vi());
+
+        // TỐI ƯU: Sử dụng luôn biến imgMedia, normalAudio đã lấy ở trên
+        // Không cần gọi lại repository findBy... nữa để tiết kiệm tài nguyên DB
+        res.setImgUrl(imgMedia != null ? imgMedia.getUrl() : null);
+        res.setAudioNormal(normalAudio != null ? normalAudio.getUrl() : null);
+        res.setAudioSlow(slowAudio != null ? slowAudio.getUrl() : null);
+
+        return res;
+    }
+
+    // Hàm phụ để code chính gọn hơn (Optional)
+    private void checkGameAndTestConstraints(Long sentenceId) {
+        if (gameQuestionRepo.existsByPromptTypeAndPromptRefIdAndDeletedAtIsNull(PromptType.SENTENCE, sentenceId)) {
+            throw new BadRequestException("Không thể cập nhật: Câu này đang được dùng trong Game.");
+        }
+        if (gameOptionRepo.existsByContentTypeAndContentRefIdAndDeletedAtIsNull(ContentType.SENTENCE, sentenceId)) {
+            throw new BadRequestException("Không thể cập nhật: Câu này đang là Option trong Game.");
+        }
+        if (testQuestionRepo.existsByStemTypeAndStemRefId(StemType.SENTENCE, sentenceId)) {
+            throw new BadRequestException("Không thể cập nhật: Câu này đang là Stem trong Test.");
+        }
+        if (testOptionRepo.existsByContentTypeAndContentRefId(ContentType.SENTENCE, sentenceId)) {
+            throw new BadRequestException("Không thể cập nhật: Câu này đang là Option trong Test.");
+        }
+    }
 }

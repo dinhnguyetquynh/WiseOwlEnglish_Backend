@@ -406,9 +406,11 @@ public class TestAdminService {
         boolean isLessonActive = test.getLessonTest().isActive();
         // Test đã có ai làm chưa?
         boolean hasAttempts = attemptRepository.existsByTest_Id(testId);
-
+        if(isLessonActive){
+            throw new BadRequestException("Bài kiểm tra nằm trong bài học đang được kích hoạt nên không được xoá. Vui lòng tắt kích hoạt bài học!\n");
+        }
         // 3. Phân nhánh xử lý
-        if (!isLessonActive && !hasAttempts) {
+        else if (!hasAttempts) {
             // === TRƯỜNG HỢP 1: XOÁ CỨNG (HARD DELETE) ===
             // Lesson chưa active VÀ chưa ai làm bài -> Dữ liệu rác -> Xoá sạch
 
@@ -420,17 +422,37 @@ public class TestAdminService {
             return "Đã xoá vĩnh viễn Test (Hard Delete) vì chưa có dữ liệu người dùng.";
         } else {
             // === TRƯỜNG HỢP 2: XOÁ MỀM (SOFT DELETE) ===
-            // Lesson đang active HOẶC đã có người làm -> Phải giữ lại để thống kê -> Ẩn đi
+            // Cập nhật deletedAt cho Test, Question và Option
 
-            test.setDeletedAt(LocalDateTime.now());
+            LocalDateTime now = LocalDateTime.now();
+
+            // A. Xoá mềm Test
+            test.setDeletedAt(now);
             test.setActive(false);
 
-            // Lưu ý: TestQuestion hiện tại chưa có field deletedAt nên ta chỉ soft delete cấp cha (Test).
-            // Các API lấy câu hỏi cần đảm bảo check test.deletedAt hoặc test.isActive.
+            // B. Xoá mềm Questions và Options (Cascading Soft Delete)
+            // Kiểm tra null safety cho list questions
+            if (test.getQuestions() != null) {
+                for (TestQuestion question : test.getQuestions()) {
+                    // Xoá mềm Question
+                    question.setDeletedAt(now);
 
+                    // Xoá mềm Options của Question đó
+                    if (question.getOptions() != null) {
+                        for (TestOption option : question.getOptions()) {
+                            option.setDeletedAt(now);
+                        }
+                    }
+                }
+            }
+
+            // C. Lưu thay đổi
+            // Nhờ CascadeType.ALL (hoặc MERGE) trong Entity Test -> Question -> Option
+            // JPA sẽ tự động update SQL cho tất cả các entity con đã bị thay đổi field.
             testRepository.save(test);
+
             eventPublisher.publishEvent(new LessonContentChangedEvent(this, test.getLessonTest().getId()));
-            return "Đã xoá mềm Test (Soft Delete) để bảo toàn lịch sử người làm bài.";
+            return "Đã xoá mềm Test và toàn bộ câu hỏi/đáp án liên quan để bảo toàn lịch sử.";
         }
     }
 }

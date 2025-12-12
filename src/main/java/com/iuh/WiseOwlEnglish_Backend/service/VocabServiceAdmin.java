@@ -47,7 +47,7 @@ public class VocabServiceAdmin {
 
 
     public List<VocabRes> getListVocab(long lessonId){
-        List<Vocabulary> vocabularyList = vocabularyRepository.findByLessonVocabulary_Id(lessonId);
+        List<Vocabulary> vocabularyList = vocabularyRepository. findByLessonVocabularyIdAndDeletedAtIsNullOrderByOrderIndexAsc(lessonId);
         List<VocabRes> vocabResList = new ArrayList<>();
         for(Vocabulary vocabulary: vocabularyList){
             VocabRes res = toDTO(vocabulary);

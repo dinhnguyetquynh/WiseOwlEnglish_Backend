@@ -16,8 +16,9 @@ public interface GameQuestionRepository extends JpaRepository<GameQuestion,Long>
     @Query("""
     SELECT gq FROM GameQuestion gq
     WHERE gq.game.id = :gameId
+    AND gq.deletedAt IS NULL
     ORDER BY gq.position ASC
-    """)
+""")
     List<GameQuestion> findByGameId(@Param("gameId") Long gameId);
 
     // 👇 CẬP NHẬT: Chỉ đếm câu hỏi của Game Active và chưa xoá

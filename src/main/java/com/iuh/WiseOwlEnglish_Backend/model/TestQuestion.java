@@ -66,4 +66,7 @@ public class TestQuestion {
     @Column(name = "hidden_word")
     private String hiddenWord;
 
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
 }

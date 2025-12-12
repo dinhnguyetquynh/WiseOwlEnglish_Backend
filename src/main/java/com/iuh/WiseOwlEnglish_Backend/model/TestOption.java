@@ -63,4 +63,6 @@ public class TestOption {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

@@ -742,8 +742,8 @@ public class GameServiceAdmin {
                 .orElseThrow(() -> new NotFoundException("Game not found"));
         // 2. KIỂM TRA TRẠNG THÁI ACTIVE
         // Nếu game đang Active (true) => Chặn không cho sửa
-        if (game.isActive()) {
-            throw new BadRequestException("Game đang hoạt động (Active). Vui lòng tắt kích hoạt (Deactivate) trước khi chỉnh sửa để bảo vệ dữ liệu người dùng.");
+        if (game.getLesson().isActive()) {
+            throw new BadRequestException("Game đang nằm trong bài học được kích hoạt nên không được cập nhật. Vui lòng tắt kích hoạt bài học rồi cập nhật game.");
         }
 
         game.setTitle(req.getTitle());
@@ -875,22 +875,17 @@ public class GameServiceAdmin {
         Long lessonId = game.getLesson().getId(); // Lưu lại ID để dùng cho Event
         // 2. Kiểm tra điều kiện
         boolean isLessonActive = game.getLesson().isActive();
+
         boolean hasAttempts = gameAttemptRepository.existsByGame_Id(gameId);
         String message;
         // 3. Xử lý phân nhánh
-        if (!isLessonActive && !hasAttempts) {
-            // === TRƯỜNG HỢP 1: XOÁ CỨNG (HARD DELETE) ===
-            // Lesson chưa active VÀ chưa ai chơi -> Rác -> Xoá sạch
-
-            // Vì Game.java có CascadeType.ALL + orphanRemoval=true với GameQuestion,
-            // và GameQuestion có CascadeType.ALL với GameOption
-            // -> Chỉ cần xoá Game là Question và Option tự bay màu.
+        if (isLessonActive){
+            throw new BadRequestException("Game nằm trong bài học đang được kích hoạt nên không được xoá. Vui lòng tắt kích hoạt bài học!");
+        }
+        else if (!hasAttempts) {
             gameRepository.delete(game);
             message = "Đã xoá vĩnh viễn Game (Hard Delete) vì chưa có dữ liệu người dùng.";
         } else {
-            // === TRƯỜNG HỢP 2: XOÁ MỀM (SOFT DELETE) ===
-            // Lesson đang active HOẶC đã có người chơi -> Phải giữ lại log -> Ẩn đi
-
             LocalDateTime now = LocalDateTime.now();
 
             // Ẩn Game

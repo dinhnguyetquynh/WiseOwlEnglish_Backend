@@ -12,6 +12,15 @@ import java.util.List;
 
 public interface TestOptionRepository extends JpaRepository<TestOption, Long> {
 
+//    boolean existsByContentTypeAndContentRefId(ContentType contentType, Long contentRefId);
+@Query("SELECT CASE WHEN COUNT(o) > 0 THEN true ELSE false END " +
+        "FROM TestOption o " +
+        "WHERE o.contentType = :contentType " +
+        "AND o.contentRefId = :contentRefId " +
+        "AND o.deletedAt IS NULL")
+boolean existsByContentTypeAndContentRefId(@Param("contentType") ContentType contentType,
+                                           @Param("contentRefId") Long contentRefId);
+
     @Query("SELECT o FROM TestOption o WHERE o.question.id = :questionId ORDER BY o.order ASC")
     List<TestOption> findByQuestionIdOrderByOrder(@Param("questionId") Long questionId);
     List<TestOption> findByQuestionIdIn(Collection<Long> questionIds);
@@ -26,5 +35,5 @@ public interface TestOptionRepository extends JpaRepository<TestOption, Long> {
     List<Long> findContentRefIdsOrderByInput(@Param("ids") Long[] ids);
 
     // Kiểm tra xem Vocab/Sentence có đang được dùng làm Option (đáp án) không
-    boolean existsByContentTypeAndContentRefId(ContentType contentType, Long contentRefId);
+
 }

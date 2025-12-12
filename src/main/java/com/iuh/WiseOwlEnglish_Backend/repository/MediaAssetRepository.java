@@ -46,5 +46,10 @@ public interface MediaAssetRepository extends JpaRepository<MediaAsset, Long> {
 
     // 2 & 3. Tìm MediaAsset theo vocabId, mediaType và tag (Dùng cho cả 'normal' và 'slow')
     MediaAsset findByVocabularyIdAndMediaTypeAndTag(Long vocabularyId, MediaType mediaType, String tag);
+
+    MediaAsset findBySentenceIdAndMediaType(Long vocabularyId, MediaType mediaType);
+
+    // 2 & 3. Tìm MediaAsset theo vocabId, mediaType và tag (Dùng cho cả 'normal' và 'slow')
+    MediaAsset findBySentenceIdAndMediaTypeAndTag(Long vocabularyId, MediaType mediaType, String tag);
 }
 
