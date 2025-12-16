@@ -9,6 +9,7 @@ import com.iuh.WiseOwlEnglish_Backend.service.TestAdminService;
 import com.iuh.WiseOwlEnglish_Backend.service.TestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,12 +21,14 @@ public class TestAdminController {
     private final TestAdminService testAdminService;
 
     @GetMapping("/get-all/{lessonId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TestsOfLessonRes> getAllTestByLesson(@PathVariable long lessonId){
         TestsOfLessonRes res = testAdminService.getTestsByLessonId(lessonId);
         return ResponseEntity.ok(res);
     }
     //API CHO ADMIN
     @GetMapping("/by-grade")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<LessonWithTestsRes>> getTestsByGrade(@RequestParam Long gradeId) {
         List<LessonWithTestsRes> res = testAdminService.getTestsByGradeId(gradeId);
         return ResponseEntity.ok(res);
@@ -33,11 +36,13 @@ public class TestAdminController {
 
 
     @PostMapping("/create")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TestRes> createTest(@RequestBody TestReq req) {
         TestRes res = testAdminService.createTest(req);
         return ResponseEntity.ok(res);
     }
     @PatchMapping("/update-status/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> updateTestStatus(
             @PathVariable Long id,
             @RequestParam boolean active
@@ -51,12 +56,14 @@ public class TestAdminController {
      * Usage: GET /api/test-admin/question-types?lessonId=1
      */
     @GetMapping("/question-types")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<String>> getQuestionTypes(@RequestParam Long lessonId) {
         List<String> types = testAdminService.getQuestionTypesByLesson(lessonId);
         return ResponseEntity.ok(types);
     }
     //  API MỚI: Xoá Test
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteTest(@PathVariable Long id) {
         String message = testAdminService.deleteTest(id);
         return ResponseEntity.ok(message);

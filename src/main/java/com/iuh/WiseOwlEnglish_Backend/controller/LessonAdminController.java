@@ -14,6 +14,7 @@ import com.iuh.WiseOwlEnglish_Backend.service.VocabServiceAdmin;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,18 +28,21 @@ public class LessonAdminController {
     private final SentenceAdminService sentenceAdminService;
 
     @GetMapping("/get-list/{gradeId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<LessonRes>> getListLesson(@PathVariable long gradeId) {
         List<LessonRes> res = adminService.getListLessonByGradeId(gradeId);
         return ResponseEntity.ok(res);
     }
 
     @PostMapping("/create")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CreateLessonRes> create(@RequestBody CreateLessonReq req) {
         CreateLessonRes created = adminService.createLesson(req);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping("/detail/{lessonId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public  ResponseEntity<LessonDetail> getDetailLesson(@PathVariable long lessonId){
         List<VocabRes> vocabResList = vocabServiceAdmin.getListVocab(lessonId);
         List<SentenceAdminRes> sentenceResList = sentenceAdminService.getListSentence(lessonId);
@@ -51,6 +55,7 @@ public class LessonAdminController {
     }
 
     @DeleteMapping("/delete/{lessonId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteLesson(@PathVariable Long lessonId) {
         // Gọi hàm delete thông minh vừa viết
         adminService.deleteLesson(lessonId);
@@ -58,6 +63,7 @@ public class LessonAdminController {
         return ResponseEntity.ok("Xoá bài học thành công (Hệ thống tự động chọn Xoá cứng hoặc Xoá mềm)");
     }
     @PatchMapping("/{id}/active")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CreateLessonRes> updateLessonStatus(
             @PathVariable Long id,
             @RequestParam boolean isActive) {
@@ -66,6 +72,7 @@ public class LessonAdminController {
         return ResponseEntity.ok(result);
     }
     @PutMapping("/update/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<LessonRes> updateLesson(
             @PathVariable Long id,
             @RequestBody UpdateLessonRequest request) {

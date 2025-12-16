@@ -17,13 +17,21 @@ import com.iuh.WiseOwlEnglish_Backend.model.Sentence;
 import com.iuh.WiseOwlEnglish_Backend.model.Vocabulary;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -315,4 +323,74 @@ public class SentenceAdminService {
             throw new BadRequestException("Không thể cập nhật: Câu này đang là Option trong Test.");
         }
     }
+    public List<String> importSentencesFromExcel(MultipartFile file, Long lessonId) {
+        List<String> errorLogs = new ArrayList<>();
+        List<CreateSentenceReq> sentenceReqs = new ArrayList<>();
+
+        // 1. Đọc file Excel
+        try (InputStream is = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(is)) {
+
+            Sheet sheet = workbook.getSheetAt(0);
+            DataFormatter dataFormatter = new DataFormatter();
+
+            // Bắt đầu từ dòng 1 (bỏ dòng tiêu đề index 0)
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                String sentenceEn = dataFormatter.formatCellValue(row.getCell(0));
+                // Nếu câu tiếng Anh rỗng thì bỏ qua
+                if (sentenceEn == null || sentenceEn.trim().isEmpty()) continue;
+
+                try {
+                    CreateSentenceReq req = new CreateSentenceReq();
+                    req.setLessonId(lessonId);
+
+                    // Map dữ liệu cột
+                    req.setSen_en(sentenceEn);
+                    req.setSen_vn(dataFormatter.formatCellValue(row.getCell(1)));
+
+                    // Xử lý boolean
+                    String isLearningStr = dataFormatter.formatCellValue(row.getCell(2));
+                    req.setForLearning(Boolean.parseBoolean(isLearningStr) || "1".equals(isLearningStr));
+
+                    // Media URLs
+                    req.setUrlImg(dataFormatter.formatCellValue(row.getCell(3)));
+                    req.setUrlAudioNormal(dataFormatter.formatCellValue(row.getCell(4)));
+                    req.setUrlAudioSlow(dataFormatter.formatCellValue(row.getCell(5)));
+
+                    // Duration (số giây)
+                    String durNormStr = dataFormatter.formatCellValue(row.getCell(6));
+                    req.setDurationSecNormal(durNormStr.isEmpty() ? 0 : (int) Double.parseDouble(durNormStr));
+
+                    String durSlowStr = dataFormatter.formatCellValue(row.getCell(7));
+                    req.setDurationSecSlow(durSlowStr.isEmpty() ? 0 : (int) Double.parseDouble(durSlowStr));
+
+                    sentenceReqs.add(req);
+
+                } catch (Exception e) {
+                    errorLogs.add("Dòng " + (i + 1) + ": Lỗi format dữ liệu - " + e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Lỗi đọc file Excel: " + e.getMessage());
+        }
+
+        // 2. Thực hiện tạo câu (Reuse logic createSentence)
+        int successCount = 0;
+        for (CreateSentenceReq req : sentenceReqs) {
+            try {
+                // Gọi hàm createSentence có sẵn để đảm bảo tính orderIndex, lưu Media và Event
+                this.createSentence(req);
+                successCount++;
+            } catch (Exception e) {
+                errorLogs.add("Lỗi import câu '" + req.getSen_en() + "': " + e.getMessage());
+            }
+        }
+
+        errorLogs.add(0, "Đã import thành công: " + successCount + "/" + sentenceReqs.size() + " câu mẫu.");
+        return errorLogs;
+    }
+
 }

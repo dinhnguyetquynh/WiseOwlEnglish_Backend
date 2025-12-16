@@ -26,16 +26,6 @@ public class CustomUserDetailsService implements UserDetailsService {
         boolean enabled = u.getStatus() == AccountStatus.VERIFIED;
         var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + u.getRoleAccount().name()));
 
-//        return User.builder()
-//                .username(u.getEmail())
-//                .password(u.getPasswordHash())
-//                .authorities(authorities)
-//                .accountExpired(false)
-//                .accountLocked(u.getStatus() == AccountStatus.LOCKED)
-//                .credentialsExpired(false)
-//                .disabled(!enabled)
-//                .build();
-//    }
         return new MyUserDetails(
                 u.getId(),                // 👈 nhét id vào principal
                 u.getEmail(),

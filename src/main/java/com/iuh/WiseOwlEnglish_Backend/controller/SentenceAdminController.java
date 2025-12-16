@@ -10,8 +10,13 @@ import com.iuh.WiseOwlEnglish_Backend.dto.respone.admin.VocabRes;
 import com.iuh.WiseOwlEnglish_Backend.service.SentenceAdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/sentences")
@@ -20,22 +25,38 @@ public class SentenceAdminController {
     private final SentenceAdminService adminService;
 
     @PostMapping("/create")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SentenceAdminRes> createSentence(@RequestBody CreateSentenceReq req){
         SentenceAdminRes res = adminService.createSentence(req);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteSentence(@PathVariable Long id) {
         String message = adminService.deleteSentence(id);
         return ResponseEntity.ok(message);
     }
 
     @PutMapping("/update/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SentenceUpdateRes> updateSentence(
             @PathVariable Long id,
             @RequestBody SentenceUpdateReq request // @Valid sẽ kích hoạt kiểm tra lỗi
     ) {
         SentenceUpdateRes res = adminService.updateSentence(id,request);
         return ResponseEntity.ok(res);
+    }
+
+    @PostMapping(value = "/import/{lessonId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<List<String>> importExcel(
+            @PathVariable Long lessonId,
+            @RequestParam("file") MultipartFile file) {
+
+        if (!file.getOriginalFilename().endsWith(".xlsx")) {
+            return ResponseEntity.badRequest().body(List.of("Vui lòng chỉ tải lên file Excel (.xlsx)"));
+        }
+
+        List<String> result = adminService.importSentencesFromExcel(file, lessonId);
+        return ResponseEntity.ok(result);
     }
 }

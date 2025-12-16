@@ -7,6 +7,7 @@ import com.iuh.WiseOwlEnglish_Backend.service.ProgressTrackingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,6 +17,7 @@ public class LessonProgressController {
     private final ProgressTrackingService progressTrackingService;
 
     @PostMapping("/mark-completed")
+    @PreAuthorize("hasRole('LEARNER')")
     public ResponseEntity<Void> markItemCompleted(
             @Valid @RequestBody LessonProgressReq req
     ) {
@@ -29,6 +31,7 @@ public class LessonProgressController {
     }
 
     @GetMapping("/lock-status")
+    @PreAuthorize("hasRole('LEARNER')")
     public ResponseEntity<LessonLockStatusRes> getLessonLockStatus(@RequestParam Long lessonId,@RequestParam Long profileId){
         LessonLockStatusRes res = progressTrackingService.getLessonLockStatus(profileId,lessonId);
         return ResponseEntity.ok(res);

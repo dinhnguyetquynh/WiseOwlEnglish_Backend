@@ -14,6 +14,7 @@ import com.iuh.WiseOwlEnglish_Backend.mapper.GameMapperIf;
 import com.iuh.WiseOwlEnglish_Backend.model.*;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import jakarta.transaction.Transactional;
+import jdk.swing.interop.SwingInterOpUtils;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
@@ -409,6 +410,7 @@ public class GameService {
                 options,
                 result.isCorrect() // 👈 Truyền kết quả
         );
+        System.out.println("DA LOG KET QUA THANH CONG");
 
         // ========== BẮT ĐẦU LOGIC MỚI ==========
         // 5.1. Kiểm tra xem đây có phải là câu hỏi cuối cùng không
@@ -492,6 +494,8 @@ public class GameService {
                     if (correctOpt == null) return new GraderResult(false, 0, "[Lỗi cấu hình game]");
 
                     String correctAnswer = correctOpt.getAnswerText();
+                    System.out.println("CORRECT ANSWER :" + correctOpt.getAnswerText());
+                    System.out.println("USER ANSWER:"+req.getTextInput());
                     boolean isCorrect = normalize(req.getTextInput()).equals(normalize(correctAnswer));
                     return new GraderResult(isCorrect, isCorrect ? reward : 0, correctAnswer);
                 }

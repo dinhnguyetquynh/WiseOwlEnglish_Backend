@@ -11,6 +11,7 @@ import com.iuh.WiseOwlEnglish_Backend.service.MyUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.validation.annotation.Validated;
@@ -27,6 +28,7 @@ public class LearnerProfileController {
     private final LearnerProfileService service;
 
     @PostMapping("/me")
+    @PreAuthorize("hasRole('LEARNER')")
     public ResponseEntity<LearnerProfileRes> createMine(
             @AuthenticationPrincipal User principal,
             @Valid @RequestBody LearnerProfileReq req
@@ -52,6 +54,7 @@ public class LearnerProfileController {
     }
 
     @PostMapping("/create-profile")
+    @PreAuthorize("hasRole('LEARNER')")
     public ResponseEntity<ProfileRes> createProfile(@AuthenticationPrincipal MyUserDetails userDetails, @Validated @RequestBody CreateLearnerProfileReq req) {
         Long userId = userDetails.getId();
         ProfileRes res = service.createProfile(req, userId);
@@ -60,17 +63,20 @@ public class LearnerProfileController {
     }
 
     @GetMapping("/get-profile/{id}")
+    @PreAuthorize("hasRole('LEARNER')")
     public ResponseEntity<LearnerProfileRes> getProfileById(@PathVariable("id") Long id){
         LearnerProfileRes profileRes = service.getLearnerProfile(id);
         return ResponseEntity.ok(profileRes);
     }
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('LEARNER')")
     public  ResponseEntity<ProfileByLearnerRes> getProfileByLearner(@PathVariable("id") Long learnerId){
         ProfileByLearnerRes res = service.getProfileByLearner(learnerId);
         return ResponseEntity.ok(res);
     }
 
     @GetMapping("/{learnerId}/points")
+    @PreAuthorize("hasRole('LEARNER')")
     public ResponseEntity<LearnerPointsResponse> getLearnerPoints(@PathVariable Long learnerId) {
         LearnerPointsResponse response = service.getLearnerPoints(learnerId);
         return ResponseEntity.ok(response);

@@ -7,6 +7,7 @@ import com.iuh.WiseOwlEnglish_Backend.enums.GameType;
 import com.iuh.WiseOwlEnglish_Backend.service.DataGameService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class DataGameController {
     private final DataGameService dataGameService;
 
     @GetMapping("/get-data")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DataGameForAdmin> getDataGameForAdmin(
             @RequestParam GameType gameType,
             @RequestParam long lessonId

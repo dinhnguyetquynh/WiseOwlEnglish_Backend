@@ -109,44 +109,6 @@ public class LessonService {
         return lessonByGradeRes;
     }
 
-//    @Transactional(readOnly = true)
-//    public List<LessonWithGamesDTO> getLessonsWithGamesByGrade(Long gradeId) {
-//        // 1. Lấy tất cả Lesson thuộc GradeLevel, sắp xếp theo thứ tự
-//        List<Lesson> lessons = lessonRepository.findByGradeLevel_IdOrderByOrderIndexAsc(gradeId);
-//        if (lessons.isEmpty()) {
-//            return Collections.emptyList();
-//        }
-//
-//        // 2. Lấy danh sách ID của các Lesson
-//        List<Long> lessonIds = lessons.stream().map(Lesson::getId).toList();
-//
-//        // 3. Lấy tất cả Game thuộc danh sách Lesson ID (chỉ 1 query)
-//        List<Game> games = gameRepository.findByLesson_IdIn(lessonIds);
-//
-//        // 4. Nhóm các Game theo Lesson ID để tra cứu nhanh
-//        Map<Long, List<Game>> gamesByLessonIdMap = games.stream()
-//                .collect(Collectors.groupingBy(game -> game.getLesson().getId()));
-//
-//        // 5. Ánh xạ sang DTO
-//        return lessons.stream().map(lesson -> {
-//            LessonWithGamesDTO lessonDTO = new LessonWithGamesDTO();
-//            lessonDTO.setLessonId(lesson.getId());
-//            lessonDTO.setUnitName(lesson.getUnitName());
-//            lessonDTO.setLessonName(lesson.getLessonName());
-//
-//            // Lấy danh sách game của lesson này từ Map
-//            List<Game> lessonGames = gamesByLessonIdMap.getOrDefault(lesson.getId(), Collections.emptyList());
-//
-//            // Ánh xạ danh sách Game sang GameInfoDTO
-//            List<GameInfoDTO> gameDTOs = lessonGames.stream()
-//                    .map(game -> new GameInfoDTO(game.getId(), game.getType().toString()))
-//                    .collect(Collectors.toList());
-//
-//            lessonDTO.setGames(gameDTOs);
-//            return lessonDTO;
-//        }).collect(Collectors.toList());
-//    }
-
 
 
     /**
@@ -228,6 +190,35 @@ public class LessonService {
         return lessonRes;
     }
 
+    public LessonByClassRes getLessonForGuest(long gradeId){
+        GradeLevel gradeLevel = gradeLevelRepo.findById(gradeId)
+                .orElseThrow(()-> new NotFoundException("Khong tim thay gradeLevel co id:"+gradeId));
+        List<Lesson> lessonList = lessonRepository.findActiveLessonsByGrade(gradeId);
+
+        LessonByClassRes res = new LessonByClassRes();
+        res.setGradeLevelId(gradeLevel.getId());
+        res.setGradeName(gradeLevel.getGradeName());
+        res.setGradeOrderIndex(gradeLevel.getOrderIndex());
+
+        List<LessonBriefRes> lessonBriefResList = new ArrayList<>();
+        for(Lesson lesson : lessonList){
+            LessonBriefRes lessonBriefRes = toDTO(lesson);
+            lessonBriefResList.add(lessonBriefRes);
+        }
+        res.setLessons(lessonBriefResList);
+        return res;
+    }
+
+    private LessonBriefRes toDTO(Lesson lesson){
+        LessonBriefRes res = new LessonBriefRes();
+        res.setId(lesson.getId());
+        res.setUnitName(lesson.getUnitName());
+        res.setLessonName(lesson.getLessonName());
+        res.setOrderIndex(lesson.getOrderIndex());
+        res.setMascot(lesson.getMascot());
+        return res;
+
+    }
 
 
 

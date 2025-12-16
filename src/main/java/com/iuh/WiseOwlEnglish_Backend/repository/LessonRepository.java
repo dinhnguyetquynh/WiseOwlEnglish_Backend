@@ -26,4 +26,8 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
     Integer findMaxOrderIndexByGradeLevelId(@Param("gradeLevelId") Long gradeLevelId);
 
     long countByDeletedAtIsNull();
+
+    @Query("SELECT l FROM Lesson l WHERE l.gradeLevel.id = :gradeLevelId AND l.deletedAt IS NULL AND l.active = true ORDER BY l.orderIndex ASC")
+    List<Lesson> findActiveLessonsByGrade(@Param("gradeLevelId") Long gradeLevelId);
+
 }

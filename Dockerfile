@@ -1,11 +1,12 @@
-# spring-app/Dockerfile
-FROM eclipse-temurin:21-jdk-jammy
+# 1. Sử dụng nền móng Java 21 (Eclipse Temurin là bản phân phối OpenJDK rất tốt)
+FROM eclipse-temurin:21-jdk-alpine
 
-# (Không cần ffmpeg nếu transcriber convert file)
-# Nếu bạn muốn app convert trước khi upload, uncomment install ffmpeg
-# RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
-
+# 2. Tạo thư mục làm việc
 WORKDIR /app
+
+# 3. Copy file .jar từ thư mục build của Gradle
+# Lưu ý: Gradle lưu file build trong "build/libs/" thay vì "target/" như Maven
 COPY build/libs/*.jar app.jar
-EXPOSE 8081
-ENTRYPOINT ["java","-jar","/app/app.jar"]
+
+# 4. Lệnh chạy ứng dụng
+ENTRYPOINT ["java", "-jar", "app.jar"]

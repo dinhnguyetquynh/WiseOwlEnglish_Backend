@@ -2,6 +2,7 @@ package com.iuh.WiseOwlEnglish_Backend.controller;
 
 import com.iuh.WiseOwlEnglish_Backend.dto.respone.GradeLevelDTO;
 import com.iuh.WiseOwlEnglish_Backend.service.GradeLevelService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

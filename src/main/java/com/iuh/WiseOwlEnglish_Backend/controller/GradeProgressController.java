@@ -5,6 +5,7 @@ import com.iuh.WiseOwlEnglish_Backend.dto.respone.LessonProgressDetailRes;
 import com.iuh.WiseOwlEnglish_Backend.service.GradeProgressService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,6 +18,7 @@ public class GradeProgressController {
     private final GradeProgressService gradeProgressService;
 
     @GetMapping("/by-grade")
+    @PreAuthorize("hasRole('LEARNER')")
     public ResponseEntity<GradeProgress> getGradeProgress(
             @RequestParam int orderIndex,
             @RequestParam("profileId") Long profileId
@@ -25,6 +27,7 @@ public class GradeProgressController {
         return ResponseEntity.ok(res);
     }
     @GetMapping("/lesson-detail")
+    @PreAuthorize("hasRole('LEARNER')")
     public ResponseEntity<LessonProgressDetailRes> getLessonProgressDetail(
             @RequestParam("lessonId") Long lessonId,
             @RequestParam("profileId") Long profileId

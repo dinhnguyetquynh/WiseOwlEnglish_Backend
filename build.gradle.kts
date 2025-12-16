@@ -76,6 +76,10 @@ dependencies {
 	// https://mvnrepository.com/artifact/org.apache.httpcomponents.client5/httpclient5
 	implementation("org.apache.httpcomponents.client5:httpclient5:5.5.1")
 
+	implementation("org.apache.poi:poi-ooxml:5.5.1")
+	// https://mvnrepository.com/artifact/me.paulschwarz/spring-dotenv
+	implementation("me.paulschwarz:spring-dotenv:4.0.0")
+
 
 }
 

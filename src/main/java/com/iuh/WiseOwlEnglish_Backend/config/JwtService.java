@@ -25,17 +25,7 @@ public class JwtService {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 
-//    public String generateToken(UserDetails user, Map<String,Object> claims, Duration ttl) {
-//        Instant now = Instant.now();
-//        return Jwts.builder()
-//                .setClaims(claims)
-//                .setSubject(user.getUsername())
-//                .setIssuedAt(Date.from(now))
-//                .setExpiration(Date.from(now.plus(ttl)))
-//                .signWith(signingKey(), SignatureAlgorithm.HS256)
-//                .compact();
-//    }
-    /** subject = userId (String) */
+
     public String generateToken(String subject, Map<String,Object> claims, Duration ttl) {
         Instant now = Instant.now();
         return Jwts.builder()
@@ -51,14 +41,7 @@ public class JwtService {
         return parseClaims(token).getSubject();
     }
 
-//    public boolean isValid(String token, UserDetails user) {
-//        try {
-//            final String sub = extractUsername(token);
-//            return sub.equals(user.getUsername()) && !isExpired(token);
-//        } catch (JwtException | IllegalArgumentException e) {
-//            return false;
-//        }
-//    }
+
         public boolean isValid(String token) {
             try {
                 return !isExpired(token);

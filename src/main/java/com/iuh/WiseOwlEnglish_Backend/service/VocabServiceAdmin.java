@@ -12,13 +12,23 @@ import com.iuh.WiseOwlEnglish_Backend.model.MediaAsset;
 import com.iuh.WiseOwlEnglish_Backend.model.Vocabulary;
 import com.iuh.WiseOwlEnglish_Backend.repository.*;
 import lombok.RequiredArgsConstructor;
+
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
+
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -187,6 +197,89 @@ public class VocabServiceAdmin {
             }
         }
     }
+
+    /**
+     * Hàm Import Excel
+     * @param file File excel tải lên
+     * @param lessonId ID của bài học muốn import vào
+     * @return Danh sách các từ vựng đã import thành công hoặc danh sách lỗi
+     */
+    public List<String> importVocabulariesFromExcel(MultipartFile file, Long lessonId) {
+        List<String> errorLogs = new ArrayList<>();
+        List<CreateVocabReq> vocabReqs = new ArrayList<>();
+
+        // 1. Đọc file Excel và map sang DTO
+        try (InputStream is = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(is)) {
+
+            Sheet sheet = workbook.getSheetAt(0); // Lấy sheet đầu tiên
+            DataFormatter dataFormatter = new DataFormatter(); // Helper để đọc cell thành String an toàn
+
+            // Duyệt từ dòng thứ 1 (bỏ qua dòng tiêu đề index 0)
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                // Kiểm tra nếu ô từ vựng chính bị rỗng thì bỏ qua dòng này
+                String termEn = dataFormatter.formatCellValue(row.getCell(0));
+                if (termEn == null || termEn.trim().isEmpty()) continue;
+
+                try {
+                    CreateVocabReq req = new CreateVocabReq();
+
+                    // Gán cứng lessonId từ tham số truyền vào
+                    req.setLessonId(lessonId);
+
+                    // Map dữ liệu từng cột (Lưu ý thứ tự cột phải khớp file mẫu)
+                    req.setTerm_en(termEn);
+                    req.setTerm_vn(dataFormatter.formatCellValue(row.getCell(1)));
+                    req.setPhonetic(dataFormatter.formatCellValue(row.getCell(2)));
+                    req.setPartOfSpeech(dataFormatter.formatCellValue(row.getCell(3)));
+
+                    // Xử lý boolean
+                    String isLearningStr = dataFormatter.formatCellValue(row.getCell(4));
+                    req.setForLearning(Boolean.parseBoolean(isLearningStr) || "1".equals(isLearningStr));
+
+                    // URL Media
+                    req.setUrlImg(dataFormatter.formatCellValue(row.getCell(5)));
+                    req.setUrlAudioNormal(dataFormatter.formatCellValue(row.getCell(6)));
+                    req.setUrlAudioSlow(dataFormatter.formatCellValue(row.getCell(7)));
+
+                    // Xử lý duration (số nguyên)
+                    String durNormStr = dataFormatter.formatCellValue(row.getCell(8));
+                    req.setDurationSecNormal(durNormStr.isEmpty() ? 0 : (int) Double.parseDouble(durNormStr));
+
+                    String durSlowStr = dataFormatter.formatCellValue(row.getCell(9));
+                    req.setDurationSecSlow(durSlowStr.isEmpty() ? 0 : (int) Double.parseDouble(durSlowStr));
+
+                    vocabReqs.add(req);
+
+                } catch (Exception e) {
+                    errorLogs.add("Dòng " + (i + 1) + ": Lỗi format dữ liệu - " + e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Lỗi đọc file Excel: " + e.getMessage());
+        }
+
+        // 2. Thực hiện tạo từ vựng (Tận dụng hàm createVocab có sẵn)
+        int successCount = 0;
+        for (CreateVocabReq req : vocabReqs) {
+            try {
+                // Gọi lại hàm createVocab bạn đã viết
+                // Hàm này đã bao gồm logic: Retry orderIndex, Save Media, Publish Event, Evict Cache
+                this.createVocab(req);
+                successCount++;
+            } catch (Exception e) {
+                errorLogs.add("Lỗi import từ '" + req.getTerm_en() + "': " + e.getMessage());
+            }
+        }
+
+        errorLogs.add(0, "Đã import thành công: " + successCount + "/" + vocabReqs.size() + " từ vựng.");
+        return errorLogs;
+    }
+
+
     @Transactional
     public String deleteVocab(Long vocabId) {
         // 1. Tìm Vocabulary
