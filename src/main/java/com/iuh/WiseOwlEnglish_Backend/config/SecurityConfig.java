@@ -71,16 +71,26 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {
         return cfg.getAuthenticationManager();
     }
-    // 🔑 CORS config cho FE tại http://localhost:5173
+    // 🔑 CORS config: Cập nhật thêm domain Vercel
     @Bean
     public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
         var cfg = new org.springframework.web.cors.CorsConfiguration();
-        cfg.setAllowedOrigins(java.util.List.of("http://localhost:5173")); // FE origin
+
+        // 👇 THAY ĐỔI QUAN TRỌNG Ở ĐÂY:
+        cfg.setAllowedOrigins(java.util.List.of(
+                "http://localhost:5173",                        // Giữ lại để chạy local
+                "https://wise-owl-english-frontend.vercel.app"  // <-- Thêm dòng này (Link Vercel của bạn)
+        ));
+
         cfg.setAllowedMethods(java.util.List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         cfg.setAllowedHeaders(java.util.List.of("Authorization","Content-Type","Accept"));
-        cfg.setExposedHeaders(java.util.List.of("Location")); // nếu bạn muốn đọc Location từ 201 Created
-        cfg.setAllowCredentials(false); // dùng Bearer token, KHÔNG qua cookie
-        cfg.setMaxAge(3600L); // cache preflight 1h
+        cfg.setExposedHeaders(java.util.List.of("Location"));
+
+        // Lưu ý: Nếu sau này bạn dùng Cookie thì phải sửa thành true.
+        // Hiện tại dùng Header Authorization thì false vẫn ổn.
+        cfg.setAllowCredentials(false);
+
+        cfg.setMaxAge(3600L);
 
         var source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
